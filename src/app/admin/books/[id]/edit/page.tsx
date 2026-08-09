@@ -34,7 +34,7 @@
         const { data, error } = await supabase.from("documents").select("*").eq("id", bookId).single()
 
         if (error || !data) {
-        setError("Livre non trouvé.")
+        setError("Document non trouvé.")
         } else {
         setFormData({
             title: data.title || "", author: data.author || "", isbn: data.isbn || "",
@@ -111,12 +111,12 @@
             <Link href="/admin/books"><Button variant="ghost" size="icon"><ArrowLeft className="w-5 h-5" /></Button></Link>
             <div>
             <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Modifier le document</h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1">Mettez à jour les informations de ce livre.</p>
+            <p className="text-slate-500 dark:text-slate-400 mt-1">Mettez à jour les informations de ce document.</p>
             </div>
         </div>
 
         {error && <Card className="border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/20"><CardContent className="p-4 text-sm text-red-700 dark:text-red-400">{error}</CardContent></Card>}
-        {success && <Card className="border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/20"><CardContent className="p-4 text-sm text-emerald-700 dark:text-emerald-400">Livre modifié avec succès ! Redirection en cours...</CardContent></Card>}
+        {success && <Card className="border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/20"><CardContent className="p-4 text-sm text-emerald-700 dark:text-emerald-400">Document modifié avec succès ! Redirection en cours...</CardContent></Card>}
 
         <form onSubmit={handleSubmit} className="space-y-6">
             <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
@@ -124,18 +124,26 @@
                 <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2"><BookOpen className="w-5 h-5 text-amber-500" /> Informations principales</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2"><Label htmlFor="title">Titre du document *</Label><Input id="title" name="title" value={formData.title} onChange={handleChange} required /></div>
-                <div className="space-y-2"><Label htmlFor="author">Auteur(s) *</Label><Input id="author" name="author" value={formData.author} onChange={handleChange} required /></div>
+                <div className="space-y-2">
+                    <Label htmlFor="author">Auteur(s) *</Label>
+                    <Input id="author" name="author" value={formData.author} onChange={handleChange} required />
+                    <p className="text-xs text-slate-500">Séparez les noms par des virgules s&apos;il y a plusieurs auteurs.</p>
+                </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-2"><Label htmlFor="isbn">ISBN</Label><Input id="isbn" name="isbn" value={formData.isbn} onChange={handleChange} /></div>
-                <div className="space-y-2"><Label htmlFor="publisher">Éditeur</Label><Input id="publisher" name="publisher" value={formData.publisher} onChange={handleChange} /></div>
+                <div className="space-y-2"><Label htmlFor="publisher">Éditeur / Établissement</Label><Input id="publisher" name="publisher" value={formData.publisher} onChange={handleChange} /></div>
                 <div className="space-y-2"><Label htmlFor="year">Année de publication</Label><Input id="year" name="year" type="number" value={formData.year} onChange={handleChange} /></div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-2">
                     <Label htmlFor="type">Type de document</Label>
                     <select id="type" name="type" value={formData.type} onChange={handleChange} className="flex h-10 w-full rounded-md border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm text-slate-900 dark:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500">
-                    <option value="book">Livre</option><option value="thesis">Mémoire / Thèse</option><option value="article">Article scientifique</option><option value="other">Autre</option>
+                    <option value="book">Livre</option>
+                    <option value="thesis">Mémoire / Thèse</option>
+                    <option value="projet_tutore">Projet tutoré</option>
+                    <option value="article">Article scientifique</option>
+                    <option value="other">Autre</option>
                     </select>
                 </div>
                 <div className="space-y-2">
@@ -155,7 +163,6 @@
                 <div className="space-y-2">
                 <Label htmlFor="total_exemplaires">Nombre total d&apos;exemplaires</Label>
                 <Input id="total_exemplaires" name="total_exemplaires" type="number" min="0" value={formData.total_exemplaires} onChange={handleChange} />
-                <p className="text-xs text-slate-500">Attention : modifier ce nombre n&apos;affecte pas les exemplaires déjà empruntés.</p>
                 </div>
             </CardContent>
             </Card>

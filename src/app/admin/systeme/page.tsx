@@ -13,9 +13,9 @@
 
     // État local pour les paramètres (à connecter à une table 'settings' dans Supabase si besoin)
     const [settings, setSettings] = useState({
-        library_name: "Bibliothèque Universitaire de Yaoundé",
-        library_address: "Avenue de l'Indépendance, Yaoundé",
-        library_phone: "+237 222 00 00 00",
+        library_name: "Bibliothèque Universitaire de Lukanga",
+        library_address: "Universitaire Adventiste de Lukanga/Nord-Kivu",
+        library_phone: "+243 992 720 042",
         library_email: "contact@biblius.cm",
         
         max_physical_loans: 5,
@@ -23,9 +23,9 @@
         max_renewals: 2,
         max_digital_loans: 3,
         
-        penalty_per_day_late: 100, // en FCFA
-        penalty_lost_book: 15000,  // en FCFA
-        penalty_damaged_book: 5000, // en FCFA
+        penalty_per_day_late: 100, // en FC
+        penalty_lost_book: 15000,  // en FC
+        penalty_damaged_book: 5000, // en FC
         
         enable_email_notifications: true,
         enable_sms_notifications: false

@@ -1,15 +1,30 @@
-    import { FileText, ExternalLink, Lock, BookOpen } from "lucide-react"
+    import { FileText, ExternalLink, BookOpen } from "lucide-react"
     import { Button } from "@/components/ui/button"
     import { Badge } from "@/components/ui/badge"
     import { Card, CardContent } from "@/components/ui/card"
     import { createServerSupabaseClient, getCurrentMember } from "@/lib/supabase/server"
     import { isStaff } from "@/lib/roles"
 
+    interface DocumentInfo {
+    title: string
+    author: string
+    }
+
+    interface DigitalResource {
+    id: string
+    title: string
+    description: string | null
+    url: string
+    type: string
+    category: string
+    access_level: string
+    documents: DocumentInfo | null
+    }
+
     export default async function DigitalResourcesPage() {
     const member = await getCurrentMember()
     const supabase = await createServerSupabaseClient()
 
-    // Filtrer selon le niveau d'accès
     let query = supabase
         .from("digital_resources")
         .select(`
@@ -23,12 +38,12 @@
         const isAdmin = isStaff(userRole)
         
         if (!isAdmin && userRole !== "teacher") {
-        // Les étudiants ne voient que "all" et "student"
         query = query.or("access_level.eq.all,access_level.eq.student")
         }
     }
 
     const { data: resources } = await query
+    const typedResources = (resources as DigitalResource[]) || []
 
     return (
         <div className="space-y-6">
@@ -40,8 +55,8 @@
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {resources && resources.length > 0 ? (
-            resources.map((resource: any) => (
+            {typedResources.length > 0 ? (
+            typedResources.map((resource) => (
                 <Card key={resource.id} className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-amber-500/30 transition-colors">
                 <CardContent className="p-6">
                     <div className="flex items-start justify-between mb-4">

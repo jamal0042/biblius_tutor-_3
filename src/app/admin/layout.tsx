@@ -1,8 +1,17 @@
     import { redirect } from "next/navigation"
     import Link from "next/link"
     import { 
-    LayoutDashboard, User, Menu, UserCheck, Users, BookOpen, 
-    Settings, TrendingUp, AlertCircle, UserPlus 
+    LayoutDashboard, 
+    User, 
+    Menu, 
+    UserCheck, 
+    Users, 
+    BookOpen, 
+    Settings, 
+    TrendingUp, 
+    AlertCircle, 
+    UserPlus, 
+    FileText 
     } from "lucide-react"
     import { getCurrentMember } from "@/lib/supabase/server"
     import { ROLE_LABELS, isStaff } from "@/lib/roles"
@@ -35,10 +44,9 @@
             <SidebarLink href="/admin/membres/invitations" icon={UserPlus} label="Invitations" />
             <SidebarLink href="/admin/books" icon={BookOpen} label="Gestion des livres" />
             <SidebarLink href="/admin/circulation" icon={TrendingUp} label="Circulation" />
-            <SidebarLink href="/admin/penalites" icon={AlertCircle} label="Penalites" />
+            <SidebarLink href="/admin/penalites" icon={AlertCircle} label="Pénalités" />
             <SidebarLink href="/admin/numerique" icon={FileText} label="Ressources Numériques" />
-            <SidebarLink href="/admin/systeme" icon={Settings} label="Parametres" />
-            
+            <SidebarLink href="/admin/systeme" icon={Settings} label="Paramètres" />
             </nav>
 
             <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-4">

@@ -11,20 +11,26 @@
     import { Card, CardContent } from "@/components/ui/card"
     import Link from "next/link"
 
+    interface DocumentOption {
+    id: string
+    title: string
+    author: string
+    }
+
     export default function AddDigitalResourcePage() {
     const router = useRouter()
     const supabase = createClient()
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState(false)
-    const [documents, setDocuments] = useState<any[]>([])
+    const [documents, setDocuments] = useState<DocumentOption[]>([])
 
     const [formData, setFormData] = useState({
         title: "",
         description: "",
         url: "",
         type: "pdf",
-        category: "article",
+        category: "projet_tutore",
         access_level: "all",
         document_id: ""
     })
@@ -39,7 +45,7 @@
         .select("id, title, author")
         .order("title")
         
-        if (data) setDocuments(data)
+        if (data) setDocuments(data as DocumentOption[])
     }
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -141,6 +147,7 @@
                     <select id="category" name="category" value={formData.category} onChange={handleChange} className="flex h-10 w-full rounded-md border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm">
                     <option value="article">Article scientifique</option>
                     <option value="thesis">Thèse / Mémoire</option>
+                    <option value="projet_tutore">Projet tutoré</option>
                     <option value="book">Livre numérique</option>
                     <option value="course">Cours</option>
                     <option value="other">Autre</option>

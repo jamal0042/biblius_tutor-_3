@@ -6,14 +6,18 @@
     import { notFound } from "next/navigation"
     import BookActions from "@/components/catalogue/book-actions"
 
+    interface SimilarBook {
+    id: string
+    title: string
+    author: string
+    type: string
+    }
+
     export default async function BookDetailPage(props: { params: Promise<{ id: string }> }) {
-    // 1. DÉBALLER LA PROMISE EN PREMIER
     const params = await props.params
     const bookId = params.id
-
     const supabase = await createServerSupabaseClient()
 
-    // 2. UTILISER bookId, JAMAIS params.id
     const { data: book, error } = await supabase
         .from("documents")
         .select("*")
@@ -26,12 +30,21 @@
 
     const isAvailable = (book.exemplaires_disponibles || 0) > 0
 
-    // 3. UTILISER bookId ICI AUSSI
     const { data: similarBooks } = await supabase
         .from("documents")
         .select("id, title, author, type")
         .neq("id", bookId)
         .limit(3)
+
+    const getTypeLabel = (type: string) => {
+        switch (type) {
+        case "book": return "Livre"
+        case "thesis": return "Mémoire / Thèse"
+        case "projet_tutore": return "Projet tutoré"
+        case "article": return "Article scientifique"
+        default: return type
+        }
+    }
 
     return (
         <div className="space-y-8">
@@ -69,14 +82,14 @@
 
             {book.description && (
                 <div>
-                <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-3">À propos de ce livre</h2>
+                <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-3">À propos de ce document</h2>
                 <p className="text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-line">{book.description}</p>
                 </div>
             )}
 
             <div className="flex flex-wrap gap-2">
                 <Badge variant="outline" className="border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 capitalize">
-                {book.type === "book" ? "Livre" : book.type}
+                {getTypeLabel(book.type)}
                 </Badge>
                 {book.publisher && (
                 <Badge variant="outline" className="border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400">
@@ -93,7 +106,7 @@
             <div className="border-t border-slate-200 dark:border-slate-800 pt-12">
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Vous aimerez aussi</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {similarBooks.map((similar: any) => (
+                {similarBooks.map((similar: SimilarBook) => (
                 <Link key={similar.id} href={`/catalogue/${similar.id}`}>
                     <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-amber-500/50 transition-all cursor-pointer group h-full">
                     <CardContent className="p-4 flex flex-col h-full">
@@ -104,7 +117,7 @@
                         <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">{similar.author}</p>
                         <div className="mt-auto">
                         <Badge variant="outline" className="border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-xs capitalize">
-                            {similar.type === "book" ? "Livre" : similar.type}
+                            {getTypeLabel(similar.type)}
                         </Badge>
                         </div>
                     </CardContent>

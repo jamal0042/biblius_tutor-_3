@@ -50,6 +50,16 @@
         book.author.toLowerCase().includes(searchTerm.toLowerCase())
     )
 
+    const getTypeLabel = (type: string) => {
+        switch (type) {
+        case "book": return "Livre"
+        case "thesis": return "Mémoire / Thèse"
+        case "projet_tutore": return "Projet tutoré"
+        case "article": return "Article"
+        default: return type
+        }
+    }
+
     if (loading) {
         return (
         <div className="flex items-center justify-center h-64">
@@ -62,7 +72,7 @@
         <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Gestion des livres</h1>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Gestion des documents</h1>
             <p className="text-slate-500 dark:text-slate-400 mt-1">
                 Ajoutez, modifiez ou supprimez des documents du catalogue.
             </p>
@@ -70,7 +80,7 @@
             <Link href="/admin/books/new">
             <Button className="bg-amber-500 hover:bg-amber-600 text-white">
                 <Plus className="w-4 h-4 mr-2" />
-                Ajouter un livre
+                Ajouter un document
             </Button>
             </Link>
         </div>
@@ -94,7 +104,7 @@
             <thead className="bg-slate-50 dark:bg-slate-800">
                 <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Titre</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Auteur</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Auteur(s)</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Type</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Exemplaires</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Numérique</th>
@@ -107,12 +117,12 @@
                     <td colSpan={6} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
                     <div className="flex flex-col items-center gap-3">
                         <BookOpen className="w-12 h-12 text-slate-300 dark:text-slate-600" />
-                        <p>{searchTerm ? "Aucun livre ne correspond à votre recherche" : "Aucun livre dans le catalogue"}</p>
+                        <p>{searchTerm ? "Aucun document ne correspond à votre recherche" : "Aucun document dans le catalogue"}</p>
                         {!searchTerm && (
                         <Link href="/admin/books/new">
                             <Button className="bg-amber-500 hover:bg-amber-600 text-white">
                             <Plus className="w-4 h-4 mr-2" />
-                            Ajouter le premier livre
+                            Ajouter le premier document
                             </Button>
                         </Link>
                         )}
@@ -126,7 +136,7 @@
                     <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{book.author}</td>
                     <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">
                         <Badge variant="outline" className="border-slate-300 dark:border-slate-700 capitalize">
-                        {book.type === "book" ? "Livre" : book.type}
+                        {getTypeLabel(book.type)}
                         </Badge>
                     </td>
                     <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{book.exemplaires_disponibles}/{book.total_exemplaires}</td>
