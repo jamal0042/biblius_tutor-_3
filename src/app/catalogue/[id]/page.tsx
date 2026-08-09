@@ -6,13 +6,18 @@
     import { notFound } from "next/navigation"
     import BookActions from "@/components/catalogue/book-actions"
 
-    export default async function BookDetailPage({ params }: { params: { id: string } }) {
+    export default async function BookDetailPage(props: { params: Promise<{ id: string }> }) {
+    // 1. DÉBALLER LA PROMISE EN PREMIER
+    const params = await props.params
+    const bookId = params.id
+
     const supabase = await createServerSupabaseClient()
 
+    // 2. UTILISER bookId, JAMAIS params.id
     const { data: book, error } = await supabase
         .from("documents")
         .select("*")
-        .eq("id", params.id)
+        .eq("id", bookId)
         .single()
 
     if (error || !book) {
@@ -21,10 +26,11 @@
 
     const isAvailable = (book.exemplaires_disponibles || 0) > 0
 
+    // 3. UTILISER bookId ICI AUSSI
     const { data: similarBooks } = await supabase
         .from("documents")
         .select("id, title, author, type")
-        .neq("id", params.id)
+        .neq("id", bookId)
         .limit(3)
 
     return (
@@ -79,7 +85,6 @@
                 )}
             </div>
 
-            {/* C'est ICI que l'étudiant clique pour emprunter */}
             <BookActions bookId={book.id} isAvailable={isAvailable} />
             </div>
         </div>
@@ -88,7 +93,7 @@
             <div className="border-t border-slate-200 dark:border-slate-800 pt-12">
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Vous aimerez aussi</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {similarBooks.map((similar) => (
+                {similarBooks.map((similar: any) => (
                 <Link key={similar.id} href={`/catalogue/${similar.id}`}>
                     <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-amber-500/50 transition-all cursor-pointer group h-full">
                     <CardContent className="p-4 flex flex-col h-full">

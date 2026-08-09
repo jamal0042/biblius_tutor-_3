@@ -36,7 +36,9 @@
             <SidebarLink href="/admin/books" icon={BookOpen} label="Gestion des livres" />
             <SidebarLink href="/admin/circulation" icon={TrendingUp} label="Circulation" />
             <SidebarLink href="/admin/penalites" icon={AlertCircle} label="Penalites" />
+            <SidebarLink href="/admin/numerique" icon={FileText} label="Ressources Numériques" />
             <SidebarLink href="/admin/systeme" icon={Settings} label="Parametres" />
+            
             </nav>
 
             <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-4">

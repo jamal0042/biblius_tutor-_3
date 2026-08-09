@@ -1,94 +1,113 @@
-    "use client"
-
-    import { Search, BookOpen, Headphones, FileText, Download, Eye } from "lucide-react"
+    import { FileText, ExternalLink, Lock, BookOpen } from "lucide-react"
     import { Button } from "@/components/ui/button"
-    import { Input } from "@/components/ui/input"
-    import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
     import { Badge } from "@/components/ui/badge"
-    
-    import { Footer } from "@/components/footer"
+    import { Card, CardContent } from "@/components/ui/card"
+    import { createServerSupabaseClient, getCurrentMember } from "@/lib/supabase/server"
+    import { isStaff } from "@/lib/roles"
 
-    // Données factices : Ressources numériques
-    const digitalResources = [
-    { id: 1, title: "Introduction à l'Algorithmique", author: "Thomas Cormen", format: "PDF", size: "4.2 Mo", type: "ebook" },
-    { id: 2, title: "Les Misérables (Intégrale)", author: "Victor Hugo", format: "EPUB", size: "1.8 Mo", type: "ebook" },
-    { id: 3, title: "Sapiens (Livre Audio)", author: "Yuval Noah Harari", format: "MP3", size: "345 Mo", type: "audio" },
-    { id: 4, title: "Recherche en Sciences Sociales", author: "Quivy & Van Campenhoudt", format: "PDF", size: "12.5 Mo", type: "article" },
-    { id: 5, title: "Dune (Livre Audio)", author: "Frank Herbert", format: "MP3", size: "410 Mo", type: "audio" },
-    { id: 6, title: "Clean Code", author: "Robert C. Martin", format: "EPUB", size: "3.1 Mo", type: "ebook" },
-    ]
+    export default async function DigitalResourcesPage() {
+    const member = await getCurrentMember()
+    const supabase = await createServerSupabaseClient()
 
-    export default function NumeriquePage() {
-    return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300 flex flex-col">
+    // Filtrer selon le niveau d'accès
+    let query = supabase
+        .from("digital_resources")
+        .select(`
+        *,
+        documents (title, author)
+        `)
+        .order("created_at", { ascending: false })
+
+    if (member) {
+        const userRole = member.role
+        const isAdmin = isStaff(userRole)
         
+        if (!isAdmin && userRole !== "teacher") {
+        // Les étudiants ne voient que "all" et "student"
+        query = query.or("access_level.eq.all,access_level.eq.student")
+        }
+    }
 
-        <main className="max-w-7xl mx-auto px-6 py-8 flex-1 w-full space-y-8">
-            
-            {/* En-tête de la page */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-                <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Ressources Numériques</h1>
-                <p className="text-slate-500 dark:text-slate-400">E-books, livres audio et articles scientifiques à consulter en ligne.</p>
-            </div>
-            <div className="relative w-full md:max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input 
-                placeholder="Rechercher une ressource..." 
-                className="pl-10 h-11 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus-visible:ring-amber-500"
-                />
-            </div>
-            </div>
+    const { data: resources } = await query
 
-            {/* Grille des ressources */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {digitalResources.map((resource) => (
-                <Card key={resource.id} className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-amber-500/50 dark:hover:border-amber-500/50 transition-all hover:shadow-lg group">
-                <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between mb-2">
-                    <div className={`p-3 rounded-lg ${
-                        resource.type === "audio" ? "bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400" :
-                        resource.type === "article" ? "bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400" :
-                        "bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400"
-                    }`}>
-                        {resource.type === "audio" ? <Headphones className="w-6 h-6" /> : 
-                        resource.type === "article" ? <FileText className="w-6 h-6" /> : 
-                        <BookOpen className="w-6 h-6" />}
+    return (
+        <div className="space-y-6">
+        <div>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Ressources Numériques</h1>
+            <p className="text-slate-500 dark:text-slate-400 mt-1">
+            Accédez aux documents numériques disponibles.
+            </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {resources && resources.length > 0 ? (
+            resources.map((resource: any) => (
+                <Card key={resource.id} className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-amber-500/30 transition-colors">
+                <CardContent className="p-6">
+                    <div className="flex items-start justify-between mb-4">
+                    <div className="w-12 h-12 rounded-lg bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center">
+                        <FileText className="w-6 h-6 text-amber-600 dark:text-amber-500" />
                     </div>
-                    <Badge variant="outline" className="border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-mono text-xs">
-                        {resource.format}
+                    <Badge className={
+                        resource.type === "pdf" ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400" :
+                        resource.type === "epub" ? "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400" :
+                        "bg-slate-100 text-slate-700 dark:bg-slate-500/20 dark:text-slate-400"
+                    }>
+                        {resource.type.toUpperCase()}
                     </Badge>
                     </div>
-                    <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white line-clamp-2 group-hover:text-amber-600 dark:group-hover:text-amber-500 transition-colors">
-                    {resource.title}
-                    </CardTitle>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">{resource.author}</p>
-                </CardHeader>
-                
-                <CardContent className="pb-2">
-                    <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
-                    <span className="flex items-center gap-1">
-                        <FileText className="w-3 h-3" /> {resource.size}
-                    </span>
-                    <span className="capitalize">{resource.type === "ebook" ? "Livre numérique" : resource.type === "audio" ? "Livre audio" : "Article"}</span>
+
+                    <h3 className="font-semibold text-slate-900 dark:text-white text-lg mb-2">{resource.title}</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 line-clamp-2">{resource.description}</p>
+
+                    {resource.documents && (
+                    <div className="mb-4 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                        <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mb-1">
+                        <BookOpen className="w-3 h-3" />
+                        Document lié
+                        </div>
+                        <div className="font-medium text-sm text-slate-900 dark:text-white">{resource.documents.title}</div>
+                        <div className="text-xs text-slate-500">{resource.documents.author}</div>
                     </div>
+                    )}
+
+                    <div className="flex items-center justify-between mb-4">
+                    <Badge variant="outline" className="border-slate-300 dark:border-slate-700 capitalize">
+                        {resource.category}
+                    </Badge>
+                    <Badge className={
+                        resource.access_level === "all" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400" :
+                        resource.access_level === "student" ? "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400" :
+                        "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400"
+                    }>
+                        {resource.access_level === "all" ? "Accès libre" : 
+                        resource.access_level === "student" ? "Étudiants" : "Staff"}
+                    </Badge>
+                    </div>
+
+                    <a href={resource.url} target="_blank" rel="noopener noreferrer">
+                    <Button className="w-full bg-amber-500 hover:bg-amber-600 text-white">
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        Accéder au document
+                    </Button>
+                    </a>
                 </CardContent>
-
-                <CardFooter className="pt-2 flex gap-2">
-                    <Button className="flex-1 bg-amber-500 hover:bg-amber-600 text-white shadow-sm">
-                    <Eye className="w-4 h-4 mr-2" />
-                    Lire
-                    </Button>
-                    <Button variant="outline" size="icon" className="border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800">
-                    <Download className="w-4 h-4" />
-                    </Button>
-                </CardFooter>
                 </Card>
-            ))}
+            ))
+            ) : (
+            <div className="col-span-full">
+                <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                    <FileText className="w-12 h-12 text-slate-300 dark:text-slate-600 mb-4" />
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Aucune ressource disponible</h3>
+                    <p className="text-slate-500 dark:text-slate-400 mt-1">
+                    Les ressources numériques apparaîtront ici quand elles seront ajoutées.
+                    </p>
+                </CardContent>
+                </Card>
             </div>
-        </main>
-
-        <Footer />
+            )}
+        </div>
         </div>
     )
     }

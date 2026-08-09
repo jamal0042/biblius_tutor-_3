@@ -38,7 +38,7 @@
             <div className="p-6 border-b border-slate-200 dark:border-slate-800">
             <Logo showSubtitle={false} />
             </div>
-            
+        
             <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
             <SidebarLink href="/dashboard" icon={LayoutDashboard} label="Tableau de bord" />
             <SidebarLink href="/catalogue" icon={BookOpen} label="Catalogue" />

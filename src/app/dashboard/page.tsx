@@ -70,7 +70,7 @@
             />
             <StatCard 
                 title="Amendes impayees" 
-                value="0 FCFA" 
+                value="0 FC" 
                 icon={CheckCircle} 
                 color="green" 
             />
