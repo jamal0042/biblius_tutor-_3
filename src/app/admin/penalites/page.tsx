@@ -1,4 +1,5 @@
     "use client"
+    /* eslint-disable react-hooks/set-state-in-effect */
 
     import { useEffect, useState, useCallback } from "react"
     import { createClient } from "@/lib/supabase/client"
@@ -46,7 +47,6 @@
         setLoading(false)
     }, [supabase])
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => {
         fetchPenalites()
     }, [fetchPenalites])
@@ -94,34 +94,10 @@
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard 
-            title="Impayées" 
-            value={`${stats.unpaid.toLocaleString()} FCFA`} 
-            icon={AlertCircle} 
-            color="text-red-600 dark:text-red-500"
-            bg="bg-red-100 dark:bg-red-500/10"
-            />
-            <StatCard 
-            title="Payées" 
-            value={`${stats.paid.toLocaleString()} FCFA`} 
-            icon={CheckCircle} 
-            color="text-emerald-600 dark:text-emerald-500"
-            bg="bg-emerald-100 dark:bg-emerald-500/10"
-            />
-            <StatCard 
-            title="Annulées" 
-            value={stats.waived.toString()} 
-            icon={XCircle} 
-            color="text-slate-600 dark:text-slate-500"
-            bg="bg-slate-100 dark:bg-slate-500/10"
-            />
-            <StatCard 
-            title="Total des cas" 
-            value={stats.total.toString()} 
-            icon={DollarSign} 
-            color="text-blue-600 dark:text-blue-500"
-            bg="bg-blue-100 dark:bg-blue-500/10"
-            />
+            <StatCard title="Impayées" value={`${stats.unpaid.toLocaleString()} FCFA`} icon={AlertCircle} color="text-red-600 dark:text-red-500" bg="bg-red-100 dark:bg-red-500/10" />
+            <StatCard title="Payées" value={`${stats.paid.toLocaleString()} FCFA`} icon={CheckCircle} color="text-emerald-600 dark:text-emerald-500" bg="bg-emerald-100 dark:bg-emerald-500/10" />
+            <StatCard title="Annulées" value={stats.waived.toString()} icon={XCircle} color="text-slate-600 dark:text-slate-500" bg="bg-slate-100 dark:bg-slate-500/10" />
+            <StatCard title="Total des cas" value={stats.total.toString()} icon={DollarSign} color="text-blue-600 dark:text-blue-500" bg="bg-blue-100 dark:bg-blue-500/10" />
         </div>
 
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg overflow-x-auto">

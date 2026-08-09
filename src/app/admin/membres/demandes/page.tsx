@@ -1,4 +1,5 @@
     "use client"
+    /* eslint-disable react-hooks/set-state-in-effect */
 
     import { useEffect, useState, useCallback } from "react"
     import { createClient } from "@/lib/supabase/client"
@@ -28,7 +29,6 @@
         setLoading(false)
     }, [supabase])
 
-        // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => {
         fetchPendingMembers()
     }, [fetchPendingMembers])
@@ -42,7 +42,7 @@
     }
 
     const handleReject = async (memberId: string) => {
-        if (!confirm("Voulez-vous vraiment refuser cette demande ? Le compte sera supprime.")) return
+        if (!confirm("Voulez-vous vraiment refuser cette demande ? Le compte sera supprimé.")) return
         setProcessing(memberId)
         const { error } = await supabase.from("members").delete().eq("id", memberId)
         if (!error) setPendingMembers((prev) => prev.filter((m) => m.id !== memberId))
@@ -58,7 +58,7 @@
         <div className="space-y-6">
         <div>
             <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Demandes d&apos;inscription</h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1">Validez les demandes d&apos;inscription recues via le formulaire en ligne.</p>
+            <p className="text-slate-500 dark:text-slate-400 mt-1">Validez les demandes d&apos;inscription reçues via le formulaire en ligne.</p>
         </div>
 
         {pendingMembers.length === 0 ? (
@@ -66,7 +66,7 @@
             <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                 <User className="w-12 h-12 text-slate-300 dark:text-slate-600 mb-4" />
                 <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Aucune demande en attente</h3>
-                <p className="text-slate-500 dark:text-slate-400 mt-1">Toutes les demandes ont ete traitees.</p>
+                <p className="text-slate-500 dark:text-slate-400 mt-1">Toutes les demandes ont été traitées.</p>
             </CardContent>
             </Card>
         ) : (

@@ -6,10 +6,8 @@
     import { Input } from "@/components/ui/input"
     import { Label } from "@/components/ui/label"
     import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-    import { createClient } from "@/lib/supabase/client"
 
     export default function AdminSystemePage() {
-    const supabase = createClient()
     const [loading, setLoading] = useState(false)
     const [success, setSuccess] = useState(false)
 

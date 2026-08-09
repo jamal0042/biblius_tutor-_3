@@ -1,4 +1,5 @@
     "use client"
+    /* eslint-disable react-hooks/set-state-in-effect */
 
     import { useEffect, useState, useCallback } from "react"
     import { createClient } from "@/lib/supabase/client"
@@ -53,10 +54,10 @@
         }
         setLoading(false)
     }, [supabase])
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        useEffect(() => {
-            fetchPrets()
-        }, [fetchPrets])
+
+    useEffect(() => {
+        fetchPrets()
+    }, [fetchPrets])
 
     const handleReturn = async (pretId: string) => {
         const { error } = await supabase
@@ -114,7 +115,7 @@
             <StatCard title="Total des emprunts" value={stats.total.toString()} icon={BookOpen} color="text-blue-600 dark:text-blue-500" bg="bg-blue-100 dark:bg-blue-500/10" />
             <StatCard title="En cours" value={stats.active.toString()} icon={Clock} color="text-amber-600 dark:text-amber-500" bg="bg-amber-100 dark:bg-amber-500/10" />
             <StatCard title="En retard" value={stats.overdue.toString()} icon={AlertCircle} color="text-red-600 dark:text-red-500" bg="bg-red-100 dark:bg-red-500/10" />
-            <StatCard title="Retournes" value={stats.returned.toString()} icon={CheckCircle} color="text-emerald-600 dark:text-emerald-500" bg="bg-emerald-100 dark:bg-emerald-500/10" />
+            <StatCard title="Retournés" value={stats.returned.toString()} icon={CheckCircle} color="text-emerald-600 dark:text-emerald-500" bg="bg-emerald-100 dark:bg-emerald-500/10" />
         </div>
 
         <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
@@ -130,7 +131,7 @@
                     <option value="all">Tous les statuts</option>
                     <option value="active">En cours</option>
                     <option value="overdue">En retard</option>
-                    <option value="returned">Retournes</option>
+                    <option value="returned">Retournés</option>
                 </select>
                 </div>
             </div>
@@ -141,7 +142,7 @@
             {filteredPrets.length === 0 ? (
             <div className="p-12 text-center">
                 <BookOpen className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
-                <p className="text-slate-500 dark:text-slate-400">Aucun emprunt trouve</p>
+                <p className="text-slate-500 dark:text-slate-400">Aucun emprunt trouvé</p>
             </div>
             ) : (
             <div className="divide-y divide-slate-200 dark:divide-slate-800">
@@ -158,8 +159,8 @@
                             <h3 className="font-semibold text-slate-900 dark:text-white truncate">{pret.documents.title}</h3>
                             <p className="text-sm text-slate-500 dark:text-slate-400">{pret.documents.author}</p>
                             <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-slate-500 dark:text-slate-400">
-                            <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> Prete le : {new Date(pret.loan_date).toLocaleDateString("fr-FR")}</span>
-                            <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> Retour prevu : {new Date(pret.due_date).toLocaleDateString("fr-FR")}</span>
+                            <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> Prêté le : {new Date(pret.loan_date).toLocaleDateString("fr-FR")}</span>
+                            <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> Retour prévu : {new Date(pret.due_date).toLocaleDateString("fr-FR")}</span>
                             </div>
                             <div className="mt-2 flex items-center gap-2">
                             <div className="w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center">
@@ -172,7 +173,7 @@
                         </div>
                         <div className="flex items-center gap-3 lg:self-center">
                         <Badge className={isOverdue ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400" : pret.status === "returned" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400" : "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400"}>
-                            {isOverdue ? "En retard" : pret.status === "returned" ? "Retourne" : "En cours"}
+                            {isOverdue ? "En retard" : pret.status === "returned" ? "Retourné" : "En cours"}
                         </Badge>
                         {pret.status !== "returned" && (
                             <Button size="sm" onClick={() => handleReturn(pret.id)} className="bg-emerald-600 hover:bg-emerald-700 text-white">

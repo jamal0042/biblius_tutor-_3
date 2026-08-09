@@ -1,4 +1,5 @@
     "use client"
+    /* eslint-disable react-hooks/set-state-in-effect */
 
     import { useEffect, useState, useCallback } from "react"
     import { createClient } from "@/lib/supabase/client"
@@ -40,7 +41,6 @@
         setLoading(false)
     }, [supabase])
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => {
         fetchBooks()
     }, [fetchBooks])
@@ -75,7 +75,6 @@
             </Link>
         </div>
 
-        {/* Barre de recherche */}
         <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
             <CardContent className="p-4">
             <div className="relative">
@@ -90,7 +89,6 @@
             </CardContent>
         </Card>
 
-        {/* Liste des livres */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg overflow-x-auto">
             <table className="w-full min-w-[800px]">
             <thead className="bg-slate-50 dark:bg-slate-800">
@@ -124,48 +122,29 @@
                 ) : (
                 filteredBooks.map((book) => (
                     <tr key={book.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                    <td className="px-6 py-4 text-sm font-medium text-slate-900 dark:text-white">
-                        {book.title}
-                    </td>
+                    <td className="px-6 py-4 text-sm font-medium text-slate-900 dark:text-white">{book.title}</td>
+                    <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{book.author}</td>
                     <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">
-                        {book.author}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">
-                        <Badge variant="outline" className="border-slate-300 dark:border-slate-700">
-                        {book.type === "book" ? "Livre" : book.type === "thesis" ? "Thèse" : book.type === "article" ? "Article" : "Autre"}
+                        <Badge variant="outline" className="border-slate-300 dark:border-slate-700 capitalize">
+                        {book.type === "book" ? "Livre" : book.type}
                         </Badge>
                     </td>
-                    <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">
-                        {book.exemplaires_disponibles}/{book.total_exemplaires}
-                    </td>
+                    <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{book.exemplaires_disponibles}/{book.total_exemplaires}</td>
                     <td className="px-6 py-4 text-sm">
                         {book.digital_url ? (
-                        <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400">
-                            Disponible
-                        </Badge>
+                        <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400">Disponible</Badge>
                         ) : (
-                        <Badge variant="outline" className="border-slate-300 dark:border-slate-700 text-slate-500">
-                            Non
-                        </Badge>
+                        <Badge variant="outline" className="border-slate-300 dark:border-slate-700 text-slate-500">Non</Badge>
                         )}
                     </td>
                     <td className="px-6 py-4 text-right text-sm">
                         <div className="flex justify-end gap-2">
                         <Link href={`/admin/books/${book.id}/edit`}>
-                            <Button
-                            size="icon"
-                            variant="ghost"
-                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950"
-                            title="Modifier ce livre"
-                            >
+                            <Button size="icon" variant="ghost" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950" title="Modifier">
                             <Pencil className="w-4 h-4" />
                             </Button>
                         </Link>
-                        <DeleteBookButton
-                            bookId={book.id}
-                            bookTitle={book.title}
-                            onSuccess={fetchBooks}
-                        />
+                        <DeleteBookButton bookId={book.id} bookTitle={book.title} onSuccess={fetchBooks} />
                         </div>
                     </td>
                     </tr>
