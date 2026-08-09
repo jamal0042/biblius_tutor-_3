@@ -1,108 +1,128 @@
-    "use client"
+    import { ArrowLeft, BookOpen, Calendar, Globe, Hash, CheckCircle, Clock, Users } from "lucide-react"
+    import { Badge } from "@/components/ui/badge"
+    import { Card, CardContent } from "@/components/ui/card"
+    import Link from "next/link"
+    import { createServerSupabaseClient } from "@/lib/supabase/server"
+    import { notFound } from "next/navigation"
+    import BookActions from "@/components/catalogue/book-actions"
 
-    import { useState } from "react"
-    import { useRouter } from "next/navigation"
-    import { createClient } from "@/lib/supabase/client"
-    import { BookOpen, Clock, CheckCircle, AlertCircle, Loader2 } from "lucide-react"
-    import { Button } from "@/components/ui/button"
+    export default async function BookDetailPage({ params }: { params: Promise<{ id: string }> }) {
+    const supabase = await createServerSupabaseClient()
+    
+    // ⚠️ CORRECTION IMPORTANTE : params est maintenant une Promise dans Next.js 15+
+    const { id } = await params
 
-    interface BookActionsProps {
-    bookId: string
-    isAvailable: boolean
+    const { data: book, error } = await supabase
+        .from("documents")
+        .select("*")
+        .eq("id", id)
+        .single()
+
+    if (error || !book) {
+        notFound()
     }
 
-    export default function BookActions({ bookId, isAvailable }: BookActionsProps) {
-    const router = useRouter()
-    const supabase = createClient()
-    const [loading, setLoading] = useState(false)
-    const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+    const isAvailable = (book.exemplaires_disponibles || 0) > 0
 
-    const handleBorrow = async () => {
-        setLoading(true)
-        setMessage(null)
-
-        try {
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
-        
-        if (userError || !user) {
-            setMessage({ type: "error", text: "Vous devez être connecté pour emprunter un livre." })
-            setTimeout(() => router.push("/login"), 2000)
-            return
-        }
-
-        const { data: member } = await supabase
-            .from("members")
-            .select("status, max_loans_duration")
-            .eq("id", user.id)
-            .single()
-
-        if (member?.status !== "active") {
-            setMessage({ type: "error", text: "Votre compte n'est pas actif ou est en attente de validation." })
-            setLoading(false)
-            return
-        }
-
-        const dueDate = new Date()
-        dueDate.setDate(dueDate.getDate() + (member?.max_loans_duration || 15))
-
-        const { error: pretError } = await supabase.from("prets").insert({
-            member_id: user.id,
-            document_id: bookId,
-            loan_date: new Date().toISOString().split("T")[0],
-            due_date: dueDate.toISOString().split("T")[0],
-            status: "active"
-        })
-
-        if (pretError) throw pretError
-
-        setMessage({ type: "success", text: "Livre emprunté avec succès ! Redirection..." })
-        setTimeout(() => {
-            router.push("/dashboard/emprunts")
-        }, 2000)
-
-        } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : "Une erreur est survenue."
-        setMessage({ type: "error", text: errorMessage })
-        } finally {
-        setLoading(false)
-        }
-    }
+    const { data: similarBooks } = await supabase
+        .from("documents")
+        .select("id, title, author, type")
+        .neq("id", id)
+        .limit(3)
 
     return (
-        <div className="space-y-3">
-        {message && (
-            <div className={`p-3 rounded-lg text-sm flex items-center gap-2 ${
-            message.type === "success" 
-                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20" 
-                : "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400 border border-red-200 dark:border-red-500/20"
-            }`}>
-            {message.type === "success" ? <CheckCircle className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
-            {message.text}
+        <div className="space-y-8">
+        <Link href="/catalogue" className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
+            <ArrowLeft className="w-4 h-4" />
+            Retour au catalogue
+        </Link>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-1">
+            <div className="aspect-[2/3] bg-slate-200 dark:bg-slate-800 rounded-lg overflow-hidden shadow-lg relative">
+                <div className="absolute inset-0 flex items-center justify-center text-slate-400 dark:text-slate-600">
+                <BookOpen className="w-32 h-32" />
+                </div>
+                <div className="absolute top-4 right-4">
+                <Badge className={isAvailable ? "bg-emerald-500 text-white" : "bg-red-500 text-white"}>
+                    {isAvailable ? <><CheckCircle className="w-3 h-3 mr-1" /> Disponible</> : <><Clock className="w-3 h-3 mr-1" /> Indisponible</>}
+                </Badge>
+                </div>
+            </div>
+            </div>
+
+            <div className="lg:col-span-2 space-y-6">
+            <div>
+                <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{book.title}</h1>
+                <p className="text-xl text-slate-600 dark:text-slate-400">par <span className="font-medium text-amber-600 dark:text-amber-500">{book.author}</span></p>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-6 border-y border-slate-200 dark:border-slate-800">
+                {book.year && <MetaItem icon={Calendar} label="Année" value={book.year.toString()} />}
+                {book.language && <MetaItem icon={Globe} label="Langue" value={book.language} />}
+                {book.pages && <MetaItem icon={Hash} label="Pages" value={book.pages.toString()} />}
+                <MetaItem icon={Users} label="Exemplaires" value={`${book.exemplaires_disponibles || 0}/${book.total_exemplaires || 0}`} />
+            </div>
+
+            {book.description && (
+                <div>
+                <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-3">À propos de ce livre</h2>
+                <p className="text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-line">{book.description}</p>
+                </div>
+            )}
+
+            <div className="flex flex-wrap gap-2">
+                <Badge variant="outline" className="border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 capitalize">
+                {book.type === "book" ? "Livre" : book.type}
+                </Badge>
+                {book.publisher && (
+                <Badge variant="outline" className="border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400">
+                    {book.publisher}
+                </Badge>
+                )}
+            </div>
+
+            <BookActions bookId={book.id} isAvailable={isAvailable} />
+            </div>
+        </div>
+
+        {similarBooks && similarBooks.length > 0 && (
+            <div className="border-t border-slate-200 dark:border-slate-800 pt-12">
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Vous aimerez aussi</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {similarBooks.map((similar) => (
+                <Link key={similar.id} href={`/catalogue/${similar.id}`}>
+                    <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-amber-500/50 transition-all cursor-pointer group h-full">
+                    <CardContent className="p-4 flex flex-col h-full">
+                        <div className="aspect-[2/3] bg-slate-100 dark:bg-slate-800 rounded mb-3 flex items-center justify-center">
+                        <BookOpen className="w-12 h-12 text-slate-300 dark:text-slate-600" />
+                        </div>
+                        <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-500 transition-colors line-clamp-1">{similar.title}</h3>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">{similar.author}</p>
+                        <div className="mt-auto">
+                        <Badge variant="outline" className="border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-xs capitalize">
+                            {similar.type === "book" ? "Livre" : similar.type}
+                        </Badge>
+                        </div>
+                    </CardContent>
+                    </Card>
+                </Link>
+                ))}
+            </div>
             </div>
         )}
-
-        <div className="flex flex-col sm:flex-row gap-3 pt-4">
-            <Button 
-            size="lg" 
-            onClick={handleBorrow}
-            disabled={loading || !isAvailable}
-            className="flex-1 bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-            {loading ? (
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-            ) : isAvailable ? (
-                <>
-                <BookOpen className="w-5 h-5 mr-2" />
-                Emprunter ce livre
-                </>
-            ) : (
-                <>
-                <Clock className="w-5 h-5 mr-2" />
-                Ajouter à la liste d&apos;attente
-                </>
-            )}
-            </Button>
         </div>
+    )
+    }
+
+    function MetaItem({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
+    return (
+        <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
+            <Icon className="w-4 h-4" />
+            <span>{label}</span>
+        </div>
+        <span className="font-semibold text-slate-900 dark:text-white">{value}</span>
         </div>
     )
     }

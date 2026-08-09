@@ -1,19 +1,14 @@
-    import Link from "next/link"
-    import { 
-    ArrowLeft, BookOpen, Calendar, Globe, Hash,CheckCircle, Clock, Users
-    } from "lucide-react"
+    import { ArrowLeft, BookOpen, Calendar, Globe, Hash, CheckCircle, Clock, Users } from "lucide-react"
     import { Badge } from "@/components/ui/badge"
     import { Card, CardContent } from "@/components/ui/card"
-    import { Header } from "@/components/header"
-    import { Footer } from "@/components/footer"
-    import BookActions from "@/components/catalogue/book-actions"
+    import Link from "next/link"
     import { createServerSupabaseClient } from "@/lib/supabase/server"
     import { notFound } from "next/navigation"
+    import BookActions from "@/components/catalogue/book-actions"
 
     export default async function BookDetailPage({ params }: { params: { id: string } }) {
     const supabase = await createServerSupabaseClient()
 
-    // 1. Récupérer les détails du livre
     const { data: book, error } = await supabase
         .from("documents")
         .select("*")
@@ -26,7 +21,6 @@
 
     const isAvailable = (book.exemplaires_disponibles || 0) > 0
 
-    // 2. Récupérer quelques livres similaires (aléatoires pour l'exemple)
     const { data: similarBooks } = await supabase
         .from("documents")
         .select("id, title, author, type")
@@ -34,129 +28,91 @@
         .limit(3)
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300 flex flex-col">
-        <Header />
-
-        <main className="max-w-7xl mx-auto px-6 py-8 flex-1">
-            
-            {/* Lien retour */}
-            <Link href="/catalogue" className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors mb-6">
+        <div className="space-y-8">
+        <Link href="/catalogue" className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
             <ArrowLeft className="w-4 h-4" />
             Retour au catalogue
-            </Link>
+        </Link>
 
-            {/* Section principale du livre */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-            
-            {/* Image du livre (1/3) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-1">
-                <div className="aspect-[2/3] bg-slate-200 dark:bg-slate-800 rounded-lg overflow-hidden shadow-lg relative">
+            <div className="aspect-[2/3] bg-slate-200 dark:bg-slate-800 rounded-lg overflow-hidden shadow-lg relative">
                 <div className="absolute inset-0 flex items-center justify-center text-slate-400 dark:text-slate-600">
-                    <BookOpen className="w-32 h-32" />
+                <BookOpen className="w-32 h-32" />
                 </div>
-                {/* Badge de disponibilité */}
                 <div className="absolute top-4 right-4">
-                    <Badge className={isAvailable ? "bg-emerald-500 text-white hover:bg-emerald-600" : "bg-red-500 text-white hover:bg-red-600"}>
-                    {isAvailable ? (
-                        <><CheckCircle className="w-3 h-3 mr-1" /> Disponible</>
-                    ) : (
-                        <><Clock className="w-3 h-3 mr-1" /> Indisponible</>
-                    )}
-                    </Badge>
-                </div>
+                <Badge className={isAvailable ? "bg-emerald-500 text-white" : "bg-red-500 text-white"}>
+                    {isAvailable ? <><CheckCircle className="w-3 h-3 mr-1" /> Disponible</> : <><Clock className="w-3 h-3 mr-1" /> Indisponible</>}
+                </Badge>
                 </div>
             </div>
+            </div>
 
-            {/* Informations du livre (2/3) */}
             <div className="lg:col-span-2 space-y-6">
-                
-                {/* Titre et auteur */}
-                <div>
-                <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-2">
-                    {book.title}
-                </h1>
-                <p className="text-xl text-slate-600 dark:text-slate-400">
-                    par <span className="font-medium text-amber-600 dark:text-amber-500">{book.author}</span>
-                </p>
-                </div>
+            <div>
+                <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{book.title}</h1>
+                <p className="text-xl text-slate-600 dark:text-slate-400">par <span className="font-medium text-amber-600 dark:text-amber-500">{book.author}</span></p>
+            </div>
 
-                {/* Métadonnées */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-6 border-y border-slate-200 dark:border-slate-800">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-6 border-y border-slate-200 dark:border-slate-800">
                 {book.year && <MetaItem icon={Calendar} label="Année" value={book.year.toString()} />}
                 {book.language && <MetaItem icon={Globe} label="Langue" value={book.language} />}
                 {book.pages && <MetaItem icon={Hash} label="Pages" value={book.pages.toString()} />}
                 <MetaItem icon={Users} label="Exemplaires" value={`${book.exemplaires_disponibles || 0}/${book.total_exemplaires || 0}`} />
-                </div>
+            </div>
 
-                {/* Synopsis */}
-                {book.description && (
+            {book.description && (
                 <div>
-                    <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-3">
-                    À propos de ce livre
-                    </h2>
-                    <p className="text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-line">
-                    {book.description}
-                    </p>
+                <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-3">À propos de ce livre</h2>
+                <p className="text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-line">{book.description}</p>
                 </div>
-                )}
-
-                {/* Type / Catégorie */}
-                <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 capitalize">
-                    {book.type === "book" ? "Livre" : book.type}
-                </Badge>
-                {book.publisher && (
-                    <Badge variant="outline" className="border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400">
-                    {book.publisher}
-                    </Badge>
-                )}
-                </div>
-
-                {/* Actions (Composant Client) */}
-                <BookActions bookId={book.id} isAvailable={isAvailable} />
-
-            </div>
-            </div>
-
-            {/* Livres similaires */}
-            {similarBooks && similarBooks.length > 0 && (
-            <div className="border-t border-slate-200 dark:border-slate-800 pt-12">
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">
-                Vous aimerez aussi
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {similarBooks.map((similar) => (
-                    <Link key={similar.id} href={`/catalogue/${similar.id}`}>
-                    <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-amber-500/50 transition-all cursor-pointer group h-full">
-                        <CardContent className="p-4 flex flex-col h-full">
-                        <div className="aspect-[2/3] bg-slate-100 dark:bg-slate-800 rounded mb-3 flex items-center justify-center">
-                            <BookOpen className="w-12 h-12 text-slate-300 dark:text-slate-600" />
-                        </div>
-                        <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-500 transition-colors line-clamp-1">
-                            {similar.title}
-                        </h3>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">{similar.author}</p>
-                        <div className="mt-auto">
-                            <Badge variant="outline" className="border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-xs capitalize">
-                            {similar.type === "book" ? "Livre" : similar.type}
-                            </Badge>
-                        </div>
-                        </CardContent>
-                    </Card>
-                    </Link>
-                ))}
-                </div>
-            </div>
             )}
 
-        </main>
+            <div className="flex flex-wrap gap-2">
+                <Badge variant="outline" className="border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 capitalize">
+                {book.type === "book" ? "Livre" : book.type}
+                </Badge>
+                {book.publisher && (
+                <Badge variant="outline" className="border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400">
+                    {book.publisher}
+                </Badge>
+                )}
+            </div>
 
-        <Footer />
+            {/* C'est ICI que l'étudiant clique pour emprunter */}
+            <BookActions bookId={book.id} isAvailable={isAvailable} />
+            </div>
+        </div>
+
+        {similarBooks && similarBooks.length > 0 && (
+            <div className="border-t border-slate-200 dark:border-slate-800 pt-12">
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Vous aimerez aussi</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {similarBooks.map((similar) => (
+                <Link key={similar.id} href={`/catalogue/${similar.id}`}>
+                    <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-amber-500/50 transition-all cursor-pointer group h-full">
+                    <CardContent className="p-4 flex flex-col h-full">
+                        <div className="aspect-[2/3] bg-slate-100 dark:bg-slate-800 rounded mb-3 flex items-center justify-center">
+                        <BookOpen className="w-12 h-12 text-slate-300 dark:text-slate-600" />
+                        </div>
+                        <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-500 transition-colors line-clamp-1">{similar.title}</h3>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">{similar.author}</p>
+                        <div className="mt-auto">
+                        <Badge variant="outline" className="border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-xs capitalize">
+                            {similar.type === "book" ? "Livre" : similar.type}
+                        </Badge>
+                        </div>
+                    </CardContent>
+                    </Card>
+                </Link>
+                ))}
+            </div>
+            </div>
+        )}
         </div>
     )
     }
 
-    // Composant interne pour les métadonnées
     function MetaItem({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
     return (
         <div className="flex flex-col gap-1">
