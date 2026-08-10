@@ -130,7 +130,7 @@
                 Copyright © {new Date().getFullYear()} Biblius. Tous droits reserves.
             </p>
             <p className="text-xs text-slate-500">
-                Version 2.0.0
+                Version 1.0.0
             </p>
             </div>
         </div>
