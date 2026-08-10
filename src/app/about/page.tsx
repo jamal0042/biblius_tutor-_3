@@ -1,6 +1,6 @@
     import { Header } from "@/components/header"
     import { Footer } from "@/components/footer"
-    import { BookOpen, Target, Users, Lightbulb } from "lucide-react"
+    import { BookOpen, Target, Lightbulb } from "lucide-react"
 
     export default function AboutPage() {
     return (
@@ -19,14 +19,14 @@
                 <Target className="w-10 h-10 text-amber-500 mb-4" />
                 <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">Notre Mission</h3>
                 <p className="text-slate-600 dark:text-slate-400">
-                Démocratiser l'accès au savoir en fournissant aux établissements d'enseignement et aux bibliothèques publiques un outil intuitif, puissant et sécurisé pour gérer leurs collections.
+                Démocratiser l&apos;accès au savoir en fournissant aux établissements d&apos;enseignement et aux bibliothèques publiques un outil intuitif, puissant et sécurisé pour gérer leurs collections.
                 </p>
             </div>
             <div className="bg-white dark:bg-slate-900 p-8 rounded-xl border border-slate-200 dark:border-slate-800">
                 <Lightbulb className="w-10 h-10 text-amber-500 mb-4" />
                 <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">Notre Vision</h3>
                 <p className="text-slate-600 dark:text-slate-400">
-                Devenir la référence incontournable en Afrique et ailleurs pour la transformation numérique des centres de documentation, sans jamais perdre l'âme de la bibliothèque traditionnelle.
+                Devenir la référence incontournable en Afrique et ailleurs pour la transformation numérique des centres de documentation, sans jamais perdre l&apos;âme de la bibliothèque traditionnelle.
                 </p>
             </div>
             </div>
@@ -35,7 +35,7 @@
             <BookOpen className="w-12 h-12 text-amber-600 dark:text-amber-500 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Pourquoi nous choisir ?</h2>
             <p className="text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-                Biblius est conçu par des bibliothécaires et des ingénieurs logiciels. Nous comprenons les défis du terrain : gestion des retards, suivi des projets tutorés, accès aux ressources numériques et simplicité d'utilisation pour les étudiants.
+                Biblius est conçu par des bibliothécaires et des ingénieurs logiciels. Nous comprenons les défis du terrain : gestion des retards, suivi des projets tutorés, accès aux ressources numériques et simplicité d&apos;utilisation pour les étudiants.
             </p>
             </div>
         </main>

@@ -46,7 +46,7 @@
             <CardContent className="p-6 text-center">
                 <h3 className="text-lg font-semibold text-amber-900 dark:text-amber-300 mb-2">Avant de nous contacter</h3>
                 <p className="text-sm text-amber-800 dark:text-amber-400 mb-4">
-                Avez-vous consulté notre <a href="/faq" className="underline font-medium">FAQ</a> ou nos <a href="/guides" className="underline font-medium">Guides d'utilisation</a> ? La réponse à votre question s'y trouve peut-être déjà !
+                Avez-vous consulté notre <a href="/faq" className="underline font-medium">FAQ</a> ou nos <a href="/guides" className="underline font-medium">Guides d&apos;utilisation</a> ? La réponse à votre question s&apos;y trouve peut-être déjà !
                 </p>
             </CardContent>
             </Card>

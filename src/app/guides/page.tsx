@@ -4,9 +4,33 @@
     import { Card, CardContent } from "@/components/ui/card"
 
     const guides = [
-    { icon: User, title: "Pour les Étudiants", steps: ["Créez votre compte via la page d'inscription.", "Attendez la validation par l'administrateur.", "Parcourez le catalogue et cliquez sur 'Emprunter'."] },
-    { icon: BookOpen, title: "Pour les Bibliothécaires", steps: ["Accédez au panneau d'administration.", "Ajoutez de nouveaux documents via 'Gestion des livres'.", "Validez les demandes d'inscription en attente."] },
-    { icon: Upload, title: "Gestion des Ressources Numériques", steps: ["Allez dans 'Ressources Numériques' > Ajouter.", "Uploadez votre fichier PDF ou EPUB.", "Définissez le niveau d'accès (Étudiants ou Tous)."] }
+    { 
+        icon: User, 
+        title: "Pour les Étudiants", 
+        steps: [
+        "Créez votre compte via la page d&apos;inscription.", 
+        "Attendez la validation par l&apos;administrateur.", 
+        "Parcourez le catalogue et cliquez sur &apos;Emprunter&apos;."
+        ] 
+    },
+    { 
+        icon: BookOpen, 
+        title: "Pour les Bibliothécaires", 
+        steps: [
+        "Accédez au panneau d&apos;administration.", 
+        "Ajoutez de nouveaux documents via &apos;Gestion des livres&apos;.", 
+        "Validez les demandes d&apos;inscription en attente."
+        ] 
+    },
+    { 
+        icon: Upload, 
+        title: "Gestion des Ressources Numériques", 
+        steps: [
+        "Allez dans &apos;Ressources Numériques&apos; &gt; Ajouter.", 
+        "Uploadez votre fichier PDF ou EPUB.", 
+        "Définissez le niveau d&apos;accès (Étudiants ou Tous)."
+        ] 
+    }
     ]
 
     export default function GuidesPage() {
@@ -15,7 +39,7 @@
         <Header />
         <main className="flex-1 max-w-5xl mx-auto px-6 py-12 w-full">
             <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-4">Guides d'utilisation</h1>
+            <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-4">Guides d&apos;utilisation</h1>
             <p className="text-lg text-slate-600 dark:text-slate-400">Apprenez à maîtriser Biblius en quelques étapes simples.</p>
             </div>
 
