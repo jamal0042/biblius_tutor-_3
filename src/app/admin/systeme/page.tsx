@@ -1,4 +1,5 @@
     "use client"
+    /* eslint-disable react-hooks/set-state-in-effect */
 
     import { useEffect, useState, useCallback } from "react"
     import { createClient } from "@/lib/supabase/client"
@@ -195,7 +196,7 @@
             <CardHeader>
                 <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                 <AlertCircle className="w-5 h-5 text-amber-500" />
-                Tarifs des pénalités (en FCFA)
+                Tarifs des pénalités (en FC)
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
