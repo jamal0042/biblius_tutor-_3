@@ -1,35 +1,83 @@
     "use client"
 
-    import { useState } from "react"
+    import { useEffect, useState, useCallback } from "react"
+    import { createClient } from "@/lib/supabase/client"
     import { Save, Building, BookOpen, AlertCircle, Mail, Loader2 } from "lucide-react"
     import { Button } from "@/components/ui/button"
     import { Input } from "@/components/ui/input"
     import { Label } from "@/components/ui/label"
     import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-    export default function AdminSystemePage() {
-    const [loading, setLoading] = useState(false)
-    const [success, setSuccess] = useState(false)
+    interface Settings {
+    library_name: string
+    library_address: string
+    library_phone: string
+    library_email: string
+    max_physical_loans: number
+    max_loan_duration_days: number
+    max_renewals: number
+    max_digital_loans: number
+    penalty_per_day_late: number
+    penalty_lost_book: number
+    penalty_damaged_book: number
+    enable_email_notifications: boolean
+    enable_sms_notifications: boolean
+    }
 
-    // État local pour les paramètres (à connecter à une table 'settings' dans Supabase si besoin)
-    const [settings, setSettings] = useState({
-        library_name: "Bibliothèque Universitaire de Lukanga",
-        library_address: "Universitaire Adventiste de Lukanga/Nord-Kivu",
-        library_phone: "+243 992 720 042",
-        library_email: "contact@biblius.cm",
-        
-        max_physical_loans: 5,
-        max_loan_duration_days: 15,
-        max_renewals: 2,
-        max_digital_loans: 3,
-        
-        penalty_per_day_late: 100, // en FC
-        penalty_lost_book: 15000,  // en FC
-        penalty_damaged_book: 5000, // en FC
-        
-        enable_email_notifications: true,
-        enable_sms_notifications: false
-    })
+    const defaultSettings: Settings = {
+    library_name: "",
+    library_address: "",
+    library_phone: "",
+    library_email: "",
+    max_physical_loans: 5,
+    max_loan_duration_days: 15,
+    max_renewals: 2,
+    max_digital_loans: 3,
+    penalty_per_day_late: 100,
+    penalty_lost_book: 15000,
+    penalty_damaged_book: 5000,
+    enable_email_notifications: true,
+    enable_sms_notifications: false
+    }
+
+    export default function AdminSystemePage() {
+    const supabase = createClient()
+    const [loading, setLoading] = useState(false)
+    const [fetching, setFetching] = useState(true)
+    const [success, setSuccess] = useState(false)
+    const [settings, setSettings] = useState<Settings>(defaultSettings)
+
+    const fetchSettings = useCallback(async () => {
+        setFetching(true)
+        const { data, error } = await supabase
+        .from("settings")
+        .select("*")
+        .eq("id", 1)
+        .single()
+
+        if (!error && data) {
+        setSettings({
+            library_name: data.library_name || "",
+            library_address: data.library_address || "",
+            library_phone: data.library_phone || "",
+            library_email: data.library_email || "",
+            max_physical_loans: data.max_physical_loans || 5,
+            max_loan_duration_days: data.max_loan_duration_days || 15,
+            max_renewals: data.max_renewals || 2,
+            max_digital_loans: data.max_digital_loans || 3,
+            penalty_per_day_late: data.penalty_per_day_late || 100,
+            penalty_lost_book: data.penalty_lost_book || 15000,
+            penalty_damaged_book: data.penalty_damaged_book || 5000,
+            enable_email_notifications: data.enable_email_notifications ?? true,
+            enable_sms_notifications: data.enable_sms_notifications ?? false
+        })
+        }
+        setFetching(false)
+    }, [supabase])
+
+    useEffect(() => {
+        fetchSettings()
+    }, [fetchSettings])
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value, type, checked } = e.target
@@ -45,14 +93,12 @@
         setSuccess(false)
 
         try {
-        // NOTE: Pour une persistance réelle, vous pouvez créer une table 'settings' dans Supabase
-        // et faire : await supabase.from('settings').upsert({ key: '...', value: '...' })
-        
-        console.log("Paramètres sauvegardés :", settings)
-        
-        // Simulation d'un délai réseau
-        await new Promise(resolve => setTimeout(resolve, 800))
-        
+        const { error } = await supabase
+            .from("settings")
+            .upsert({ id: 1, ...settings, updated_at: new Date().toISOString() })
+
+        if (error) throw error
+
         setSuccess(true)
         setTimeout(() => setSuccess(false), 3000)
         } catch (error) {
@@ -63,12 +109,20 @@
         }
     }
 
+    if (fetching) {
+        return (
+        <div className="flex items-center justify-center h-64">
+            <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+        </div>
+        )
+    }
+
     return (
         <div className="max-w-4xl mx-auto space-y-8">
         <div>
             <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Paramètres du système</h1>
             <p className="text-slate-500 dark:text-slate-400 mt-1">
-            Configurez les règles globde la bibliothèque, les tarifs et les notifications.
+            Configurez les règles globales de la bibliothèque, les tarifs et les notifications.
             </p>
         </div>
 
