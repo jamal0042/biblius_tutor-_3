@@ -1,11 +1,12 @@
     "use client"
 
-    import Link from "next/link"
     import { useState } from "react"
+    import Link from "next/link" // <-- AJOUTÉ ICI pour corriger l'erreur "Link is not defined"
     import { useAuth } from "@/hooks/use-auth"
     import { isStaff, ROLE_LABELS } from "@/lib/roles"
     import { Logo } from "@/components/logo"
     import { ThemeToggle } from "@/components/theme-toggle"
+    import { NavLink } from "@/components/nav-link"
     import { Button } from "@/components/ui/button"
     import { Menu, X, User, LogOut, LayoutDashboard, BookOpen } from "lucide-react"
 
@@ -19,43 +20,48 @@
         )
     }
 
+    const linkClass = "text-sm font-medium transition-colors"
+    const normalColor = "text-slate-600 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-500"
+    const activeColor = "text-amber-600 dark:text-amber-500 font-semibold"
+
     return (
         <header className="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex h-16 items-center justify-between">
             
-            {/* CORRECTION ICI : Le Logo est SEUL, sans <Link> autour */}
             <Logo showSubtitle={false} className="flex items-center gap-2" />
 
             {/* Navigation Desktop */}
             <nav className="hidden md:flex items-center gap-6">
-                <Link href="/about" className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-500 transition-colors">
-                A propos
-                </Link>
-                <Link href="/blog" className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-500 transition-colors">
+                <NavLink href="/about" className={`${linkClass} ${normalColor}`} activeClassName={activeColor}>
+                À propos
+                </NavLink>
+                
+                <NavLink href="/blog" className={`${linkClass} ${normalColor}`} activeClassName={activeColor}>
                 Blog
-                </Link>
-                <Link href="/contact" className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-500 transition-colors">
+                </NavLink>
+                
+                <NavLink href="/contact" className={`${linkClass} ${normalColor}`} activeClassName={activeColor}>
                 Contactez-nous
-                </Link>
+                </NavLink>
 
                 {member ? (
                 <>
-                    <Link href="/catalogue" className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-500 transition-colors flex items-center gap-1">
+                    <NavLink href="/catalogue" className={`${linkClass} ${normalColor} flex items-center gap-1`} activeClassName={activeColor}>
                     <BookOpen className="w-4 h-4" />
                     Catalogue
-                    </Link>
+                    </NavLink>
                     
                     {isStaff(member.role) ? (
-                    <Link href="/admin" className="text-sm font-medium text-amber-600 dark:text-amber-500 hover:text-amber-700 dark:hover:text-amber-400 transition-colors flex items-center gap-1">
+                    <NavLink href="/admin" className={`${linkClass} text-amber-600 dark:text-amber-500 hover:text-amber-700 dark:hover:text-amber-400 flex items-center gap-1`} activeClassName="font-bold underline underline-offset-4">
                         <LayoutDashboard className="w-4 h-4" />
                         Administration
-                    </Link>
+                    </NavLink>
                     ) : (
-                    <Link href="/dashboard" className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-500 transition-colors flex items-center gap-1">
+                    <NavLink href="/dashboard" className={`${linkClass} ${normalColor} flex items-center gap-1`} activeClassName={activeColor}>
                         <User className="w-4 h-4" />
                         Mon Espace
-                    </Link>
+                    </NavLink>
                     )}
 
                     <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 mx-2" />
@@ -71,7 +77,7 @@
                         className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10"
                     >
                         <LogOut className="w-4 h-4 mr-2" />
-                        Deconnexion
+                        Déconnexion
                     </Button>
                     </div>
                 </>
@@ -83,7 +89,7 @@
                     </Link>
                     <Link href="/register">
                     <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white">
-                        S inscrire
+                        S&apos;inscrire
                     </Button>
                     </Link>
                 </>
@@ -111,30 +117,30 @@
         {isMobileMenuOpen && (
             <div className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
             <div className="px-4 py-4 space-y-3">
-                <Link href="/about" className="block text-sm font-medium text-slate-600 dark:text-slate-300" onClick={() => setIsMobileMenuOpen(false)}>
-                A propos
-                </Link>
-                <Link href="/blog" className="block text-sm font-medium text-slate-600 dark:text-slate-300" onClick={() => setIsMobileMenuOpen(false)}>
+                <NavLink href="/about" className="block text-sm font-medium text-slate-600 dark:text-slate-300" activeClassName="text-amber-600 dark:text-amber-500 font-semibold" onClick={() => setIsMobileMenuOpen(false)}>
+                À propos
+                </NavLink>
+                <NavLink href="/blog" className="block text-sm font-medium text-slate-600 dark:text-slate-300" activeClassName="text-amber-600 dark:text-amber-500 font-semibold" onClick={() => setIsMobileMenuOpen(false)}>
                 Blog
-                </Link>
-                <Link href="/contact" className="block text-sm font-medium text-slate-600 dark:text-slate-300" onClick={() => setIsMobileMenuOpen(false)}>
+                </NavLink>
+                <NavLink href="/contact" className="block text-sm font-medium text-slate-600 dark:text-slate-300" activeClassName="text-amber-600 dark:text-amber-500 font-semibold" onClick={() => setIsMobileMenuOpen(false)}>
                 Contactez-nous
-                </Link>
+                </NavLink>
 
                 {member ? (
                 <>
                     <div className="h-px bg-slate-200 dark:bg-slate-800 my-2" />
-                    <Link href="/catalogue" className="block text-sm font-medium text-slate-600 dark:text-slate-300" onClick={() => setIsMobileMenuOpen(false)}>
+                    <NavLink href="/catalogue" className="block text-sm font-medium text-slate-600 dark:text-slate-300" activeClassName="text-amber-600 dark:text-amber-500 font-semibold" onClick={() => setIsMobileMenuOpen(false)}>
                     Catalogue
-                    </Link>
+                    </NavLink>
                     {isStaff(member.role) ? (
-                    <Link href="/admin" className="block text-sm font-medium text-amber-600 dark:text-amber-500" onClick={() => setIsMobileMenuOpen(false)}>
+                    <NavLink href="/admin" className="block text-sm font-medium text-amber-600 dark:text-amber-500" activeClassName="font-bold underline" onClick={() => setIsMobileMenuOpen(false)}>
                         Administration
-                    </Link>
+                    </NavLink>
                     ) : (
-                    <Link href="/dashboard" className="block text-sm font-medium text-slate-600 dark:text-slate-300" onClick={() => setIsMobileMenuOpen(false)}>
+                    <NavLink href="/dashboard" className="block text-sm font-medium text-slate-600 dark:text-slate-300" activeClassName="text-amber-600 dark:text-amber-500 font-semibold" onClick={() => setIsMobileMenuOpen(false)}>
                         Mon Espace ({ROLE_LABELS[member.role]})
-                    </Link>
+                    </NavLink>
                     )}
                     <div className="h-px bg-slate-200 dark:bg-slate-800 my-2" />
                     <Button 
@@ -143,7 +149,7 @@
                     onClick={() => { signOut(); setIsMobileMenuOpen(false); }}
                     >
                     <LogOut className="w-4 h-4 mr-2" />
-                    Deconnexion
+                    Déconnexion
                     </Button>
                 </>
                 ) : (
@@ -153,7 +159,7 @@
                     <Button variant="outline" className="w-full">Connexion</Button>
                     </Link>
                     <Link href="/register" onClick={() => setIsMobileMenuOpen(false)}>
-                    <Button className="w-full bg-amber-500 hover:bg-amber-600 text-white">S inscrire</Button>
+                    <Button className="w-full bg-amber-500 hover:bg-amber-600 text-white">S&apos;inscrire</Button>
                     </Link>
                 </>
                 )}
