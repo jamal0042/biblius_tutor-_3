@@ -11,7 +11,7 @@
     TrendingUp, 
     AlertCircle, 
     UserPlus, 
-    FileText 
+    FileText,BarChart3 
     } from "lucide-react"
     import { getCurrentMember } from "@/lib/supabase/server"
     import { ROLE_LABELS, isStaff } from "@/lib/roles"
@@ -47,6 +47,7 @@
             <SidebarLink href="/admin/penalites" icon={AlertCircle} label="Pénalités" />
             <SidebarLink href="/admin/numerique" icon={FileText} label="Ressources Numériques" />
             <SidebarLink href="/admin/systeme" icon={Settings} label="Paramètres" />
+            <SidebarLink href="/admin/rapports" icon={BarChart3} label="Rapports" />
             </nav>
 
             <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-4">
