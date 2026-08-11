@@ -98,7 +98,12 @@
                 )}
             </div>
 
-            <BookActions bookId={book.id} isAvailable={isAvailable} />
+            <BookActions 
+            bookId={book.id} 
+            bookTitle={book.title} 
+            bookType={book.type} 
+            isAvailable={isAvailable} 
+            />
             </div>
         </div>
 

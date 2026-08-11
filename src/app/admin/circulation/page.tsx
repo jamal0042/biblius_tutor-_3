@@ -59,19 +59,58 @@
         fetchPrets()
     }, [fetchPrets])
 
-    const handleReturn = async (pretId: string) => {
-        const { error } = await supabase
-        .from("prets")
-        .update({ 
-            status: "returned",
-            return_date: new Date().toISOString().split("T")[0]
-        })
-        .eq("id", pretId)
+    const handleReturn = async (pretId: string, dueDateStr: string, memberId: string) => {
+        if (!confirm("Confirmer le retour de ce document ?")) return
 
-        if (!error) {
-        fetchPrets()
+        try {
+        const today = new Date()
+        const dueDate = new Date(dueDateStr)
+        const isLate = today > dueDate
+        
+        let daysLate = 0
+        if (isLate) {
+            const diffTime = Math.abs(today.getTime() - dueDate.getTime())
+            daysLate = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+        }
+
+        const { error: pretError } = await supabase
+            .from("prets")
+            .update({ 
+            status: "returned",
+            return_date: today.toISOString().split("T")[0]
+            })
+            .eq("id", pretId)
+
+        if (pretError) throw pretError
+
+        if (isLate && daysLate > 0) {
+            const { data: settings } = await supabase
+            .from("settings")
+            .select("penalty_per_day_late")
+            .eq("id", 1)
+            .single()
+            
+            const penaltyRate = settings?.penalty_per_day_late || 100
+            const penaltyAmount = penaltyRate * daysLate
+
+            await supabase.from("penalites").insert({
+            member_id: memberId,
+            type: "late",
+            amount: penaltyAmount,
+            days: daysLate,
+            reason: `Retour de prêt avec ${daysLate} jour(s) de retard`,
+            status: "unpaid"
+            })
+
+            alert(`Document retourné.\n\n⚠️ Attention : Ce retour est en retard de ${daysLate} jour(s).\nUne pénalité de ${penaltyAmount} FCFA a été générée automatiquement.`)
         } else {
-        alert("Erreur lors de l'enregistrement du retour")
+            alert("Document retourné avec succès.")
+        }
+        
+        fetchPrets()
+        } catch (error) {
+        console.error("Erreur retour:", error)
+        alert("Erreur lors de l'enregistrement du retour.")
         }
     }
 
@@ -88,8 +127,8 @@
 
     const stats = {
         total: prets.length,
-        active: prets.filter(p => p.status === "active").length,
-        overdue: prets.filter(p => p.status === "overdue").length,
+        active: prets.filter(p => p.status === "active" && new Date(p.due_date) >= new Date()).length,
+        overdue: prets.filter(p => p.status === "overdue" || (p.status === "active" && new Date(p.due_date) < new Date())).length,
         returned: prets.filter(p => p.status === "returned").length
     }
 
@@ -176,7 +215,11 @@
                             {isOverdue ? "En retard" : pret.status === "returned" ? "Retourné" : "En cours"}
                         </Badge>
                         {pret.status !== "returned" && (
-                            <Button size="sm" onClick={() => handleReturn(pret.id)} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                            <Button 
+                            size="sm" 
+                            onClick={() => handleReturn(pret.id, pret.due_date, pret.member_id)} 
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            >
                             <CheckCircle className="w-4 h-4 mr-2" />
                             Enregistrer le retour
                             </Button>

@@ -1,3 +1,5 @@
+    "use client"
+
     import { Header } from "@/components/header"
     import { Footer } from "@/components/footer"
     import { Mail, Phone, MapPin, Send } from "lucide-react"
@@ -56,7 +58,7 @@
             <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
                 <CardContent className="p-6">
                 <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-slate-900 dark:text-white">Nom</label>
                         <Input placeholder="Votre nom" />
@@ -74,7 +76,7 @@
                     <label className="text-sm font-medium text-slate-900 dark:text-white">Message</label>
                     <Textarea rows={5} placeholder="Décrivez votre demande..." />
                     </div>
-                    <Button className="w-full bg-amber-500 hover:bg-amber-600 text-white">
+                    <Button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 text-white">
                     <Send className="w-4 h-4 mr-2" /> Envoyer le message
                     </Button>
                 </form>
