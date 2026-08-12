@@ -1,6 +1,7 @@
     import { Header } from "@/components/header"
     import { Footer } from "@/components/footer"
     import Link from "next/link"
+    import Image from "next/image"
     import { Calendar, Clock, ArrowRight, BookOpen, TrendingUp, Users } from "lucide-react"
     import { Badge } from "@/components/ui/badge"
     import { Card, CardContent } from "@/components/ui/card"
@@ -15,7 +16,7 @@
         date: "10 Sept 2026",
         readTime: "5 min",
         featured: true,
-        image: "📚"
+        image: "https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=800&h=600&fit=crop"
     },
     {
         slug: "comment-bien-choisir-ses-lectures",
@@ -26,7 +27,7 @@
         date: "5 Sept 2026",
         readTime: "7 min",
         featured: false,
-        image: "🎓"
+        image: "https://images.unsplash.com/photo-1457369804613-52c61a468e7d?w=600&h=400&fit=crop"
     },
     {
         slug: "ressources-numeriques-guide",
@@ -37,7 +38,7 @@
         date: "20 Août 2026",
         readTime: "4 min",
         featured: false,
-        image: "💻"
+        image: "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=600&h=400&fit=crop"
     }
     ]
 
@@ -73,9 +74,15 @@
                 <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-amber-500/50 transition-all cursor-pointer group">
                     <CardContent className="p-0">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-500/20 dark:to-orange-500/20 p-12 flex items-center justify-center min-h-[250px]">
-                        <span className="text-8xl">{featuredArticle.image}</span>
+                        <div className="relative h-64 md:h-full min-h-[300px] rounded-t-lg md:rounded-l-lg md:rounded-tr-none overflow-hidden">
+                        <Image
+                            src={featuredArticle.image}
+                            alt={featuredArticle.title}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
                         </div>
+                        
                         <div className="p-6 md:p-8 flex flex-col justify-center">
                         <Badge className="w-fit mb-4 bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 border-amber-200 dark:border-amber-500/30">
                             {featuredArticle.category}
@@ -112,9 +119,15 @@
                 <Link key={article.slug} href={`/blog/${article.slug}`}>
                     <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-amber-500/50 hover:shadow-lg transition-all h-full group cursor-pointer">
                     <CardContent className="p-6 flex flex-col h-full">
-                        <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-6 mb-4 flex items-center justify-center">
-                        <span className="text-5xl">{article.image}</span>
+                        <div className="relative h-48 mb-4 rounded-lg overflow-hidden">
+                        <Image
+                            src={article.image}
+                            alt={article.title}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
                         </div>
+                        
                         <Badge className="w-fit mb-3 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700">
                         {article.category}
                         </Badge>
