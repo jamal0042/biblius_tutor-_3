@@ -50,7 +50,7 @@
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col">
         <Header />
         
-        <section className="bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600 text-white py-16 px-6">
+        <section className="bg-gradient-to-br from-amber-590 via-amber-600 to-orange-60 text-white py-16 px-6">
             <div className="max-w-6xl mx-auto">
             <div className="flex items-center gap-2 mb-4">
                 <BookOpen className="w-6 h-6" />
