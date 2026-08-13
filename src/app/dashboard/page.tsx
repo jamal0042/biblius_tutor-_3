@@ -1,43 +1,84 @@
-    "use client"
-
-    import Link from "next/link"
-    import { 
-    BookOpen, Clock, AlertCircle, CheckCircle, Calendar 
-    } from "lucide-react"
+    import { BookOpen, Clock, AlertCircle, CheckCircle, Calendar } from "lucide-react"
     import { Button } from "@/components/ui/button"
-    import { Card, CardContent} from "@/components/ui/card"
+    import { Card, CardContent } from "@/components/ui/card"
     import { Badge } from "@/components/ui/badge"
-    //import { Logo } from "@/components/logo"
+    import Link from "next/link"
+    import { redirect } from "next/navigation"
+    import { getCurrentMember, createServerSupabaseClient } from "@/lib/supabase/server"
 
-    // Données factices pour la démonstration
-    const currentLoans = [
-    { id: 1, title: "Le Petit Prince", author: "Antoine de Saint-Exupery", dueDate: "15 Sept 2024", status: "on-time" },
-    { id: 2, title: "1984", author: "George Orwell", dueDate: "02 Sept 2024", status: "overdue" },
-    { id: 3, title: "Dune", author: "Frank Herbert", dueDate: "20 Sept 2024", status: "on-time" },
-    ]
+    // --- Interfaces mises à jour : documents est un tableau [] ---
+    interface LoanData {
+    id: string
+    due_date: string
+    status: string
+    documents: { title: string; author: string }[] | null
+    }
 
-    const reservations = [
-    { id: 1, title: "Sapiens", author: "Yuval Noah Harari", status: "ready" },
-    { id: 2, title: "Les Miserables", author: "Victor Hugo", status: "waiting" },
-    ]
+    interface ReservationData {
+    id: string
+    status: string
+    documents: { title: string; author: string }[] | null
+    }
 
-    export default function DashboardPage() {
+    interface PenaltyData {
+    amount: number
+    }
+
+    export default async function DashboardPage() {
+    const member = await getCurrentMember()
+    if (!member) redirect("/login")
+
+    const supabase = await createServerSupabaseClient()
+
+    const { data: loans } = await supabase
+        .from("prets")
+        .select(`id, due_date, status, documents (title, author)`)
+        .eq("member_id", member.id)
+        .in("status", ["active", "overdue"])
+        .order("due_date", { ascending: true })
+
+    const { data: reservations } = await supabase
+        .from("reservations")
+        .select(`id, status, documents (title, author)`)
+        .eq("member_id", member.id)
+        .in("status", ["pending", "ready"])
+        .order("created_at", { ascending: false })
+
+    const { data: penalties } = await supabase
+        .from("penalites")
+        .select("amount")
+        .eq("member_id", member.id)
+        .eq("status", "unpaid")
+
+    const today = new Date()
+    const typedLoans = (loans as LoanData[]) || []
+    const typedReservations = (reservations as ReservationData[]) || []
+    const typedPenalties = (penalties as PenaltyData[]) || []
+
+    const activeLoans = typedLoans.filter((l) => l.status === "active" && new Date(l.due_date) >= today)
+    const overdueLoans = typedLoans.filter((l) => l.status === "overdue" || new Date(l.due_date) < today)
+    
+    const totalUnpaidFines = typedPenalties.reduce((acc: number, curr: PenaltyData) => acc + (curr.amount || 0), 0)
+
+    const formatDate = (dateString: string) => {
+        return new Date(dateString).toLocaleDateString("fr-FR", {
+        day: "numeric",
+        month: "short",
+        year: "numeric"
+        })
+    }
+
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
-        {/* Barre de navigation du tableau de bord */}
-
-
-        {/* Contenu principal */}
         <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
             
-            {/* Section de bienvenue */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
                 <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
-                Bonjour, Jamal 
+                Bonjour, {member.first_name} {member.last_name} 
                 </h1>
                 <p className="text-slate-500 dark:text-slate-400 mt-1">
-                Voici un apercu de votre activite a la bibliotheque.
+                Voici un aperçu de votre activité à la bibliothèque.
                 </p>
             </div>
             <Link href="/catalogue">
@@ -48,103 +89,115 @@
             </Link>
             </div>
 
-            {/* Grille de statistiques */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard 
-                title="Emprunts en cours" 
-                value="3" 
-                icon={BookOpen} 
-                color="blue" 
-            />
-            <StatCard 
-                title="En retard" 
-                value="1" 
-                icon={AlertCircle} 
-                color="red" 
-            />
-            <StatCard 
-                title="Reservations" 
-                value="2" 
-                icon={Calendar} 
-                color="amber" 
-            />
-            <StatCard 
-                title="Amendes impayees" 
-                value="0 FC" 
-                icon={CheckCircle} 
-                color="green" 
-            />
+            <StatCard title="Emprunts en cours" value={activeLoans.length.toString()} icon={BookOpen} color="blue" />
+            <StatCard title="En retard" value={overdueLoans.length.toString()} icon={AlertCircle} color="red" />
+            <StatCard title="Réservations" value={typedReservations.length.toString()} icon={Calendar} color="amber" />
+            <StatCard title="Amendes impayées" value={`${totalUnpaidFines.toLocaleString()} FCFA`} icon={CheckCircle} color="green" />
             </div>
 
-            {/* Section Emprunts et Reservations */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
-            {/* Emprunts en cours (Prend 2/3 de la largeur) */}
             <div className="lg:col-span-2 space-y-4">
                 <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
                 Mes emprunts en cours
                 </h2>
-                <div className="space-y-3">
-                {currentLoans.map((loan) => (
-                    <Card key={loan.id} className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-amber-500/30 transition-colors">
-                    <CardContent className="flex items-center justify-between p-4">
-                        <div className="flex items-center gap-4">
-                        <div className="w-12 h-16 bg-slate-100 dark:bg-slate-800 rounded flex items-center justify-center">
-                            <BookOpen className="w-6 h-6 text-slate-400" />
-                        </div>
-                        <div>
-                            <h3 className="font-semibold text-slate-900 dark:text-white">{loan.title}</h3>
-                            <p className="text-sm text-slate-500 dark:text-slate-400">{loan.author}</p>
-                        </div>
-                        </div>
-                        <div className="flex flex-col items-end gap-1">
-                        <Badge variant={loan.status === "overdue" ? "destructive" : "default"} className={
-                            loan.status === "overdue" 
-                            ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20" 
-                            : "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20"
-                        }>
-                            {loan.status === "overdue" ? "En retard" : "A temps"}
-                        </Badge>
-                        <span className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            Retour : {loan.dueDate}
-                        </span>
-                        </div>
+                
+                {typedLoans.length === 0 ? (
+                <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                    <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+                    <CheckCircle className="w-12 h-12 text-emerald-500/50 mb-3" />
+                    <p className="text-slate-500 dark:text-slate-400">Vous n&apos;avez aucun emprunt en cours.</p>
                     </CardContent>
-                    </Card>
-                ))}
+                </Card>
+                ) : (
+                <div className="space-y-3">
+                    {[...overdueLoans, ...activeLoans].map((loan) => {
+                    const isOverdue = new Date(loan.due_date) < today
+                    const doc = loan.documents?.[0] // <-- CORRECTION : on prend le 1er élément du tableau
+                    
+                    return (
+                        <Card key={loan.id} className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-amber-500/30 transition-colors">
+                        <CardContent className="flex items-center justify-between p-4">
+                            <div className="flex items-center gap-4">
+                            <div className="w-12 h-16 bg-slate-100 dark:bg-slate-800 rounded flex items-center justify-center shrink-0">
+                                <BookOpen className="w-6 h-6 text-slate-400" />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-slate-900 dark:text-white">
+                                {doc?.title || "Titre inconnu"}
+                                </h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">
+                                {doc?.author || "Auteur inconnu"}
+                                </p>
+                            </div>
+                            </div>
+                            <div className="flex flex-col items-end gap-1">
+                            <Badge className={
+                                isOverdue 
+                                ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400" 
+                                : "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400"
+                            }>
+                                {isOverdue ? "En retard" : "À temps"}
+                            </Badge>
+                            <span className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                Retour : {formatDate(loan.due_date)}
+                            </span>
+                            </div>
+                        </CardContent>
+                        </Card>
+                    )
+                    })}
                 </div>
+                )}
             </div>
 
-            {/* Reservations (Prend 1/3 de la largeur) */}
             <div className="space-y-4">
                 <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
-                Mes reservations
+                Mes réservations
                 </h2>
-                <div className="space-y-3">
-                {reservations.map((res) => (
-                    <Card key={res.id} className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-                    <CardContent className="p-4">
-                        <div className="flex items-start justify-between mb-2">
-                        <h3 className="font-semibold text-slate-900 dark:text-white text-sm">{res.title}</h3>
-                        <Badge variant="outline" className={
-                            res.status === "ready" 
-                            ? "border-amber-500 text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-500/10" 
-                            : "border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400"
-                        }>
-                            {res.status === "ready" ? "Disponible" : "En attente"}
-                        </Badge>
-                        </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">{res.author}</p>
-                        {res.status === "ready" && (
-                        <Button size="sm" className="w-full bg-amber-500 hover:bg-amber-600 text-white h-8 text-xs">
-                            Retirer a l accueil
-                        </Button>
-                        )}
+                
+                {typedReservations.length === 0 ? (
+                <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                    <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+                    <Calendar className="w-12 h-12 text-slate-300 dark:text-slate-600 mb-3" />
+                    <p className="text-slate-500 dark:text-slate-400 text-sm">Aucune réservation en cours.</p>
                     </CardContent>
-                    </Card>
-                ))}
+                </Card>
+                ) : (
+                <div className="space-y-3">
+                    {typedReservations.map((res) => {
+                    const doc = res.documents?.[0] // <-- CORRECTION : on prend le 1er élément du tableau
+                    return (
+                        <Card key={res.id} className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                        <CardContent className="p-4">
+                            <div className="flex items-start justify-between mb-2">
+                            <h3 className="font-semibold text-slate-900 dark:text-white text-sm line-clamp-1">
+                                {doc?.title || "Titre inconnu"}
+                            </h3>
+                            <Badge variant="outline" className={
+                                res.status === "ready" 
+                                ? "border-amber-500 text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-500/10" 
+                                : "border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400"
+                            }>
+                                {res.status === "ready" ? "Disponible" : "En attente"}
+                            </Badge>
+                            </div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+                            {doc?.author || "Auteur inconnu"}
+                            </p>
+                            {res.status === "ready" && (
+                            <Button size="sm" className="w-full bg-amber-500 hover:bg-amber-600 text-white h-8 text-xs">
+                                Retirer à l&apos;accueil
+                            </Button>
+                            )}
+                        </CardContent>
+                        </Card>
+                    )
+                    })}
                 </div>
+                )}
             </div>
 
             </div>
@@ -153,7 +206,6 @@
     )
     }
 
-    // Composant interne pour les cartes de statistiques
     function StatCard({ title, value, icon: Icon, color }: { 
     title: string; 
     value: string; 
