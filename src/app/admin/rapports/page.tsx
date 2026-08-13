@@ -6,6 +6,8 @@
     import { BarChart3, BookOpen, Users, AlertCircle, TrendingUp, Download } from "lucide-react"
     import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
     import { Button } from "@/components/ui/button"
+    import jsPDF from "jspdf"
+    import autoTable from "jspdf-autotable"
 
     interface LoanData {
     status: string
@@ -26,6 +28,7 @@
         totalPenaltiesAmount: 0
     })
     const [loading, setLoading] = useState(true)
+    const [exporting, setExporting] = useState(false)
 
     const fetchReports = useCallback(async () => {
         setLoading(true)
@@ -58,6 +61,116 @@
         fetchReports()
     }, [fetchReports])
 
+    // Fonction d'export PDF
+    const handleExportPDF = async () => {
+        setExporting(true)
+        
+        try {
+        const doc = new jsPDF()
+        
+        // En-tête du PDF
+        doc.setFontSize(20)
+        doc.setTextColor(245, 158, 11) // Couleur amber
+        doc.text("Biblius - Rapport Statistique", 14, 20)
+        
+        doc.setFontSize(12)
+        doc.setTextColor(100, 100, 100)
+        doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}`, 14, 28)
+        
+        // Ligne de séparation
+        doc.setDrawColor(245, 158, 11)
+        doc.setLineWidth(0.5)
+        doc.line(14, 32, 196, 32)
+        
+        // Section : Statistiques générales
+        doc.setFontSize(16)
+        doc.setTextColor(30, 41, 59) // slate-800
+        doc.text("Statistiques Générales", 14, 42)
+        
+        doc.setFontSize(11)
+        doc.setTextColor(71, 85, 105) // slate-600
+        
+        const statsData = [
+            ["Total Documents", stats.totalDocuments.toString()],
+            ["Membres Actifs", stats.totalMembers.toString()],
+            ["Emprunts en Cours", stats.activeLoans.toString()],
+            ["Emprunts en Retard", stats.overdueLoans.toString()],
+            ["Amendes Impayées", `${stats.totalPenaltiesAmount.toLocaleString()} FCFA`]
+        ]
+        
+        autoTable(doc, {
+            startY: 46,
+            head: [["Indicateur", "Valeur"]],
+            body: statsData,
+            theme: 'striped',
+            headStyles: { 
+            fillColor: [245, 158, 11],
+            textColor: [255, 255, 255],
+            fontStyle: 'bold'
+            },
+            alternateRowStyles: {
+            fillColor: [254, 243, 199] // amber-100
+            }
+        })
+        
+        // Section : Indicateurs de performance
+        const finalY = (doc as any).lastAutoTable.finalY || 100
+        doc.setFontSize(16)
+        doc.setTextColor(30, 41, 59)
+        doc.text("Indicateurs de Performance", 14, finalY + 15)
+        
+        const circulationRate = stats.totalDocuments > 0 ? Math.round((stats.activeLoans / stats.totalDocuments) * 100) : 0
+        const overdueRate = (stats.activeLoans + stats.overdueLoans) > 0 
+            ? Math.round((stats.overdueLoans / (stats.activeLoans + stats.overdueLoans)) * 100) 
+            : 0
+        
+        doc.setFontSize(11)
+        doc.setTextColor(71, 85, 105)
+        
+        const perfData = [
+            ["Taux de circulation", `${circulationRate}%`],
+            ["Taux de retard", `${overdueRate}%`]
+        ]
+        
+        autoTable(doc, {
+            startY: finalY + 20,
+            head: [["Indicateur", "Pourcentage"]],
+            body: perfData,
+            theme: 'striped',
+            headStyles: { 
+            fillColor: [239, 68, 68], // red-500
+            textColor: [255, 255, 255],
+            fontStyle: 'bold'
+            },
+            alternateRowStyles: {
+            fillColor: [254, 226, 226] // red-100
+            }
+        })
+        
+        // Pied de page
+        const pageCount = doc.getNumberOfPages()
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i)
+            doc.setFontSize(8)
+            doc.setTextColor(150, 150, 150)
+            doc.text(
+            `Page ${i} sur ${pageCount} - Biblius © ${new Date().getFullYear()}`,
+            14,
+            290
+            )
+        }
+        
+        // Télécharger le PDF
+        doc.save(`rapport-biblius-${new Date().toISOString().split('T')[0]}.pdf`)
+        
+        } catch (error) {
+        console.error("Erreur lors de l'export PDF:", error)
+        alert("Une erreur est survenue lors de la génération du PDF.")
+        } finally {
+        setExporting(false)
+        }
+    }
+
     if (loading) return <div className="p-8 text-center text-slate-500">Chargement des rapports...</div>
 
     const circulationRate = stats.totalDocuments > 0 ? Math.round((stats.activeLoans / stats.totalDocuments) * 100) : 0
@@ -72,8 +185,22 @@
             <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Rapports Statistiques</h1>
             <p className="text-slate-500 dark:text-slate-400 mt-1">Vue d&apos;ensemble automatisée de l&apos;activité de la bibliothèque.</p>
             </div>
-            <Button variant="outline" className="gap-2">
-            <Download className="w-4 h-4" /> Exporter en PDF
+            <Button 
+            variant="outline" 
+            className="gap-2"
+            onClick={handleExportPDF}
+            disabled={exporting}
+            >
+            {exporting ? (
+                <>
+                <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+                Génération...
+                </>
+            ) : (
+                <>
+                <Download className="w-4 h-4" /> Exporter en PDF
+                </>
+            )}
             </Button>
         </div>
 
