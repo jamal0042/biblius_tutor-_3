@@ -1,251 +1,463 @@
     "use client"
-    /* eslint-disable react-hooks/set-state-in-effect */
 
     import { useEffect, useState, useCallback } from "react"
     import { createClient } from "@/lib/supabase/client"
-    import { BookOpen, Search, Filter, CheckCircle, AlertCircle, Clock, Calendar } from "lucide-react"
+    import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
     import { Button } from "@/components/ui/button"
-    import { Input } from "@/components/ui/input"
     import { Badge } from "@/components/ui/badge"
-    import { Card, CardContent } from "@/components/ui/card"
-    import { ROLE_LABELS } from "@/lib/roles"
+    import { Input } from "@/components/ui/input"
+    import { Plus, RotateCcw, X, ScanLine, AlertCircle, BookOpen } from "lucide-react"
 
-    interface Pret {
+    const PENALTY_PER_DAY = 100
+
+    // 🌟 Interfaces adaptées : toutes les relations sont des tableaux (ce que Supabase renvoie)
+    interface MemberData {
     id: string
-    member_id: string
+    first_name: string
+    last_name: string
+    email: string
+    }
+
+    interface DocData {
+    id: string  // ✅ AJOUTÉ pour corriger l'erreur ligne 175
+    title: string
+    author: string
+    }
+
+    interface ExemplaireData {
+    barcode: string
+    }
+
+    interface MemberOption {
+    id: string
+    first_name: string
+    last_name: string
+    email: string
+    }
+
+    interface ExemplaireOption {
+    id: string
+    barcode: string
     document_id: string
-    type: string
+    documents: DocData[] | null  // ✅ Tableau au lieu d'objet unique
+    }
+
+    interface ActiveLoan {
+    id: string
     loan_date: string
     due_date: string
-    return_date: string | null
-    status: string
-    members: {
-        first_name: string
-        last_name: string
-        email: string
-        role: string
-    }
-    documents: {
-        title: string
-        author: string
-    }
+    exemplaire_id: string
+    members: MemberData[] | null          // ✅ Tableau
+    documents: DocData[] | null           // ✅ Tableau avec id
+    exemplaires: ExemplaireData[] | null  // ✅ Tableau
     }
 
-    export default function CirculationPage() {
+    // Fonction utilitaire pour extraire le premier élément d'une relation Supabase
+    function first<T>(rel: T[] | null | undefined): T | null {
+    if (!rel || rel.length === 0) return null
+    return rel[0]
+    }
+
+    export default function AdminCirculationPage() {
     const supabase = createClient()
-    const [prets, setPrets] = useState<Pret[]>([])
+
+    const [members, setMembers] = useState<MemberOption[]>([])
+    const [availableExemplaires, setAvailableExemplaires] = useState<ExemplaireOption[]>([])
+    const [loans, setLoans] = useState<ActiveLoan[]>([])
     const [loading, setLoading] = useState(true)
-    const [searchTerm, setSearchTerm] = useState("")
-    const [filterStatus, setFilterStatus] = useState("all")
 
-    const fetchPrets = useCallback(async () => {
+    const [memberId, setMemberId] = useState("")
+    const [barcodeInput, setBarcodeInput] = useState("")
+    const [selectedExemplaire, setSelectedExemplaire] = useState<ExemplaireOption | null>(null)
+    const [dueDate, setDueDate] = useState("")
+    const [saving, setSaving] = useState(false)
+
+    const [returnLoan, setReturnLoan] = useState<ActiveLoan | null>(null)
+    const [condition, setCondition] = useState("good")
+    const [notes, setNotes] = useState("")
+
+    const loadData = useCallback(async () => {
         setLoading(true)
-        const { data, error } = await supabase
-        .from("prets")
-        .select(`
-            *,
-            members (first_name, last_name, email, role),
-            documents (title, author)
-        `)
-        .order("loan_date", { ascending: false })
 
-        if (!error && data) {
-        setPrets(data as Pret[])
-        }
+        try {
+        const [m, ex, l] = await Promise.all([
+            supabase.from("members").select("id, first_name, last_name, email").eq("status", "active"),
+            supabase
+            .from("exemplaires")
+            .select("id, barcode, document_id, documents (id, title, author)")
+            .eq("status", "available")
+            .order("barcode", { ascending: true }),
+            supabase
+            .from("prets")
+            .select(`
+                id, loan_date, due_date, exemplaire_id,
+                members (id, first_name, last_name, email),
+                documents (id, title, author),
+                exemplaires (barcode)
+            `)
+            .in("status", ["active", "overdue"])
+            .order("due_date", { ascending: true })
+        ])
+
+        setMembers((m.data as unknown as MemberOption[]) || [])
+        setAvailableExemplaires((ex.data as unknown as ExemplaireOption[]) || [])
+        setLoans((l.data as unknown as ActiveLoan[]) || [])
+        } finally {
         setLoading(false)
+        }
     }, [supabase])
 
     useEffect(() => {
-        fetchPrets()
-    }, [fetchPrets])
-
-    const handleReturn = async (pretId: string, dueDateStr: string, memberId: string) => {
-        if (!confirm("Confirmer le retour de ce document ?")) return
-
-        try {
-        const today = new Date()
-        const dueDate = new Date(dueDateStr)
-        const isLate = today > dueDate
-        
-        let daysLate = 0
-        if (isLate) {
-            const diffTime = Math.abs(today.getTime() - dueDate.getTime())
-            daysLate = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+        const fetchData = async () => {
+        await loadData()
         }
 
-        const { error: pretError } = await supabase
-            .from("prets")
-            .update({ 
-            status: "returned",
-            return_date: today.toISOString().split("T")[0]
-            })
-            .eq("id", pretId)
+        void fetchData()
+    }, [loadData])
 
-        if (pretError) throw pretError
-
-        if (isLate && daysLate > 0) {
-            const { data: settings } = await supabase
-            .from("settings")
-            .select("penalty_per_day_late")
-            .eq("id", 1)
-            .single()
-            
-            const penaltyRate = settings?.penalty_per_day_late || 100
-            const penaltyAmount = penaltyRate * daysLate
-
-            await supabase.from("penalites").insert({
-            member_id: memberId,
-            type: "late",
-            amount: penaltyAmount,
-            days: daysLate,
-            reason: `Retour de prêt avec ${daysLate} jour(s) de retard`,
-            status: "unpaid"
-            })
-
-            alert(`Document retourné.\n\n⚠️ Attention : Ce retour est en retard de ${daysLate} jour(s).\nUne pénalité de ${penaltyAmount} FCFA a été générée automatiquement.`)
-        } else {
-            alert("Document retourné avec succès.")
+    const handleBarcodeSearch = () => {
+        const trimmed = barcodeInput.trim()
+        if (!trimmed) {
+        setSelectedExemplaire(null)
+        return
         }
-        
-        fetchPrets()
-        } catch (error) {
-        console.error("Erreur retour:", error)
-        alert("Erreur lors de l'enregistrement du retour.")
-        }
-    }
-
-    const filteredPrets = prets.filter((pret) => {
-        const matchesSearch = 
-        pret.documents.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        pret.members.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        pret.members.last_name.toLowerCase().includes(searchTerm.toLowerCase())
-        
-        const matchesFilter = filterStatus === "all" || pret.status === filterStatus
-        
-        return matchesSearch && matchesFilter
-    })
-
-    const stats = {
-        total: prets.length,
-        active: prets.filter(p => p.status === "active" && new Date(p.due_date) >= new Date()).length,
-        overdue: prets.filter(p => p.status === "overdue" || (p.status === "active" && new Date(p.due_date) < new Date())).length,
-        returned: prets.filter(p => p.status === "returned").length
-    }
-
-    if (loading) {
-        return (
-        <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-            <BookOpen className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-4 animate-pulse" />
-            <p className="text-slate-500 dark:text-slate-400">Chargement des emprunts...</p>
-            </div>
-        </div>
+        const found = availableExemplaires.find(
+        (ex) => ex.barcode.toLowerCase() === trimmed.toLowerCase()
         )
+        setSelectedExemplaire(found || null)
     }
+
+    const handleCreateLoan = async () => {
+        if (!memberId || !selectedExemplaire || !dueDate) {
+        alert("Veuillez remplir tous les champs et scanner un code-barres valide.")
+        return
+        }
+
+        const { count } = await supabase
+        .from("prets")
+        .select("*", { count: "exact", head: true })
+        .eq("member_id", memberId)
+        .in("status", ["active", "overdue"])
+
+        if ((count || 0) >= 5) {
+        alert("Ce membre a atteint sa limite de 5 emprunts simultanés.")
+        return
+        }
+
+        setSaving(true)
+
+        const { error } = await supabase.from("prets").insert({
+        member_id: memberId,
+        document_id: selectedExemplaire.document_id,
+        exemplaire_id: selectedExemplaire.id,
+        loan_date: new Date().toISOString().split("T")[0],
+        due_date: dueDate,
+        status: "active",
+        notified_overdue: false
+        })
+
+        if (!error) {
+        await supabase
+            .from("exemplaires")
+            .update({ status: "loaned" })
+            .eq("id", selectedExemplaire.id)
+
+        setMemberId("")
+        setBarcodeInput("")
+        setSelectedExemplaire(null)
+        setDueDate("")
+        await loadData()
+        } else {
+        alert("Erreur : " + error.message)
+        }
+        setSaving(false)
+    }
+
+    const handleReturn = async () => {
+        if (!returnLoan) return
+        setSaving(true)
+
+        const today = new Date()
+        const due = new Date(returnLoan.due_date)
+        const daysLate = Math.max(0, Math.ceil((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24)))
+        const penalty = daysLate * PENALTY_PER_DAY
+        const member = first(returnLoan.members)
+        const doc = first(returnLoan.documents)  // ✅ Maintenant doc.id existe
+
+        // 1. Insérer le retour
+        await supabase.from("retours").insert({
+        pret_id: returnLoan.id,
+        member_id: member?.id ?? null,  // ✅ Pas d'erreur si member est null
+        document_id: doc?.id ?? null,
+        exemplaire_id: returnLoan.exemplaire_id,
+        return_date: today.toISOString(),
+        due_date: returnLoan.due_date,
+        days_late: daysLate,
+        penalty_amount: penalty,
+        book_condition: condition,
+        notes: notes || null
+        })
+
+        // 2. Mettre à jour le prêt
+        await supabase
+        .from("prets")
+        .update({ status: "returned", return_date: today.toISOString() })
+        .eq("id", returnLoan.id)
+
+        // 3. Remettre l'exemplaire en disponible
+        if (returnLoan.exemplaire_id) {
+        await supabase
+            .from("exemplaires")
+            .update({ status: "available" })
+            .eq("id", returnLoan.exemplaire_id)
+        }
+
+        // 4. Créer la pénalité si retard
+        if (penalty > 0 && member) {
+        await supabase.from("penalites").insert({
+            member_id: member.id,
+            pret_id: returnLoan.id,
+            amount: penalty,
+            reason: `Retard de ${daysLate} jour(s)`,
+            status: "unpaid"
+        })
+        }
+
+        setReturnLoan(null)
+        setCondition("good")
+        setNotes("")
+        await loadData()
+        setSaving(false)
+    }
+
+    const today = new Date()
 
     return (
         <div className="space-y-6">
         <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Circulation</h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1">Gestion des emprunts et retours de documents</p>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Circulation des livres</h1>
+            <p className="text-slate-500 dark:text-slate-400 mt-1">
+            Enregistrez les emprunts et retours en scannant les exemplaires.
+            </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard title="Total des emprunts" value={stats.total.toString()} icon={BookOpen} color="text-blue-600 dark:text-blue-500" bg="bg-blue-100 dark:bg-blue-500/10" />
-            <StatCard title="En cours" value={stats.active.toString()} icon={Clock} color="text-amber-600 dark:text-amber-500" bg="bg-amber-100 dark:bg-amber-500/10" />
-            <StatCard title="En retard" value={stats.overdue.toString()} icon={AlertCircle} color="text-red-600 dark:text-red-500" bg="bg-red-100 dark:bg-red-500/10" />
-            <StatCard title="Retournés" value={stats.returned.toString()} icon={CheckCircle} color="text-emerald-600 dark:text-emerald-500" bg="bg-emerald-100 dark:bg-emerald-500/10" />
-        </div>
-
+        {/* Formulaire nouvel emprunt */}
         <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-            <CardContent className="p-4">
-            <div className="flex flex-col sm:flex-row gap-4">
-                <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input placeholder="Rechercher par titre ou membre..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
-                </div>
-                <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4 text-slate-400" />
-                <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="flex h-10 rounded-md border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm text-slate-900 dark:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500">
-                    <option value="all">Tous les statuts</option>
-                    <option value="active">En cours</option>
-                    <option value="overdue">En retard</option>
-                    <option value="returned">Retournés</option>
+            <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+                <Plus className="w-5 h-5 text-amber-500" />
+                Nouvel emprunt physique
+            </CardTitle>
+            </CardHeader>
+            <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                <label className="text-sm font-medium mb-1 block">Membre</label>
+                <select
+                    value={memberId}
+                    onChange={(e) => setMemberId(e.target.value)}
+                    className="w-full h-10 px-3 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                >
+                    <option value="">-- Choisir un membre --</option>
+                    {members.map((m) => (
+                    <option key={m.id} value={m.id}>
+                        {m.first_name} {m.last_name}
+                    </option>
+                    ))}
                 </select>
                 </div>
+
+                <div className="md:col-span-2">
+                <label className="text-sm font-medium mb-1 block">
+                    Code-barres de l&apos;exemplaire
+                </label>
+                <div className="flex gap-2">
+                    <Input
+                    type="text"
+                    value={barcodeInput}
+                    onChange={(e) => setBarcodeInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleBarcodeSearch()}
+                    placeholder="Scanner ou saisir (ex: BIB-ABCD-1234-001)"
+                    autoFocus
+                    />
+                    <Button type="button" variant="outline" onClick={handleBarcodeSearch}>
+                    <ScanLine className="w-4 h-4" />
+                    </Button>
+                </div>
+                
+                {selectedExemplaire && (
+                    <div className="mt-2 p-2 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 rounded text-sm">
+                    <div className="font-semibold text-emerald-900 dark:text-emerald-300">
+                        ✓ {first(selectedExemplaire.documents)?.title}
+                    </div>
+                    <div className="text-emerald-700 dark:text-emerald-400 text-xs">
+                        {first(selectedExemplaire.documents)?.author} • {selectedExemplaire.barcode}
+                    </div>
+                    </div>
+                )}
+                {barcodeInput && !selectedExemplaire && (
+                    <div className="mt-2 p-2 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded text-sm flex items-center gap-2 text-red-700 dark:text-red-400">
+                    <AlertCircle className="w-4 h-4" />
+                    Aucun exemplaire disponible avec ce code
+                    </div>
+                )}
+                </div>
+
+                <div>
+                <label className="text-sm font-medium mb-1 block">Date retour prévue</label>
+                <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                </div>
+            </div>
+
+            <div className="mt-4 flex justify-end">
+                <Button
+                onClick={handleCreateLoan}
+                disabled={saving || !selectedExemplaire}
+                className="bg-amber-500 hover:bg-amber-600 text-white"
+                >
+                <BookOpen className="w-4 h-4 mr-2" />
+                Enregistrer l&apos;emprunt
+                </Button>
             </div>
             </CardContent>
         </Card>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
-            {filteredPrets.length === 0 ? (
-            <div className="p-12 text-center">
-                <BookOpen className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
-                <p className="text-slate-500 dark:text-slate-400">Aucun emprunt trouvé</p>
-            </div>
-            ) : (
-            <div className="divide-y divide-slate-200 dark:divide-slate-800">
-                {filteredPrets.map((pret) => {
-                const isOverdue = pret.status === "overdue" || (pret.status === "active" && new Date(pret.due_date) < new Date())
-                return (
-                    <div key={pret.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                        <div className="flex items-start gap-4 flex-1">
-                        <div className="w-12 h-16 bg-slate-100 dark:bg-slate-800 rounded flex items-center justify-center shrink-0">
-                            <BookOpen className="w-6 h-6 text-slate-400" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-slate-900 dark:text-white truncate">{pret.documents.title}</h3>
-                            <p className="text-sm text-slate-500 dark:text-slate-400">{pret.documents.author}</p>
-                            <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-slate-500 dark:text-slate-400">
-                            <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> Prêté le : {new Date(pret.loan_date).toLocaleDateString("fr-FR")}</span>
-                            <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> Retour prévu : {new Date(pret.due_date).toLocaleDateString("fr-FR")}</span>
-                            </div>
-                            <div className="mt-2 flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center">
-                                <span className="text-xs font-medium text-amber-600 dark:text-amber-500">{pret.members.first_name[0]}</span>
-                            </div>
-                            <span className="text-sm text-slate-700 dark:text-slate-300">{pret.members.first_name} {pret.members.last_name}</span>
-                            <Badge variant="outline" className="text-xs border-slate-300 dark:border-slate-700">{ROLE_LABELS[pret.members.role as keyof typeof ROLE_LABELS]}</Badge>
-                            </div>
-                        </div>
-                        </div>
-                        <div className="flex items-center gap-3 lg:self-center">
-                        <Badge className={isOverdue ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400" : pret.status === "returned" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400" : "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400"}>
-                            {isOverdue ? "En retard" : pret.status === "returned" ? "Retourné" : "En cours"}
-                        </Badge>
-                        {pret.status !== "returned" && (
-                            <Button 
-                            size="sm" 
-                            onClick={() => handleReturn(pret.id, pret.due_date, pret.member_id)} 
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                            >
-                            <CheckCircle className="w-4 h-4 mr-2" />
-                            Enregistrer le retour
-                            </Button>
-                        )}
-                        </div>
-                    </div>
-                    </div>
-                )
-                })}
-            </div>
-            )}
-        </div>
-        </div>
-    )
-    }
-
-    function StatCard({ title, value, icon: Icon, color, bg }: { title: string; value: string; icon: React.ElementType; color: string; bg: string }) {
-    return (
+        {/* Liste des emprunts actifs */}
         <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-        <CardContent className="flex items-center gap-4 p-6">
-            <div className={`p-3 rounded-lg ${bg}`}><Icon className={`w-6 h-6 ${color}`} /></div>
-            <div>
-            <p className="text-sm text-slate-500 dark:text-slate-400">{title}</p>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white">{value}</p>
-            </div>
-        </CardContent>
+            <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+                <RotateCcw className="w-5 h-5 text-amber-500" />
+                Emprunts en cours ({loans.length})
+            </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+            {loading ? (
+                <div className="p-8 text-center text-slate-500">Chargement...</div>
+            ) : loans.length === 0 ? (
+                <div className="p-8 text-center text-slate-500">Aucun emprunt en cours.</div>
+            ) : (
+                <div className="overflow-x-auto">
+                <table className="w-full">
+                    <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+                    <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Document</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Code-barres</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Membre</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Retour prévu</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Statut</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Action</th>
+                    </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                    {loans.map((loan) => {
+                        const member = first(loan.members)
+                        const doc = first(loan.documents)
+                        const exemplaire = first(loan.exemplaires)
+                        const isOverdue = new Date(loan.due_date) < today
+
+                        return (
+                        <tr key={loan.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <td className="px-6 py-4">
+                            <div className="font-medium text-slate-900 dark:text-white">
+                                {doc?.title || "Inconnu"}
+                            </div>
+                            <div className="text-sm text-slate-500">{doc?.author}</div>
+                            </td>
+                            <td className="px-6 py-4">
+                            <Badge variant="outline" className="font-mono text-xs">
+                                {exemplaire?.barcode || "N/A"}
+                            </Badge>
+                            </td>
+                            <td className="px-6 py-4">
+                            <div className="font-medium text-slate-900 dark:text-white">
+                                {member ? `${member.first_name} ${member.last_name}` : "Inconnu"}
+                            </div>
+                            <div className="text-sm text-slate-500">{member?.email}</div>
+                            </td>
+                            <td className={`px-6 py-4 ${isOverdue ? "text-red-600 font-semibold" : "text-slate-700 dark:text-slate-300"}`}>
+                            {new Date(loan.due_date).toLocaleDateString("fr-FR")}
+                            </td>
+                            <td className="px-6 py-4">
+                            <Badge className={isOverdue
+                                ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400"
+                                : "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400"}>
+                                {isOverdue ? "En retard" : "À temps"}
+                            </Badge>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                            <Button size="sm" variant="outline" onClick={() => setReturnLoan(loan)}>
+                                <RotateCcw className="w-4 h-4 mr-1" />
+                                Retour
+                            </Button>
+                            </td>
+                        </tr>
+                        )
+                    })}
+                    </tbody>
+                </table>
+                </div>
+            )}
+            </CardContent>
         </Card>
+
+        {/* Modale de retour */}
+        {returnLoan && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+            <Card className="w-full max-w-md bg-white dark:bg-slate-900">
+                <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="text-lg">Enregistrer le retour</CardTitle>
+                <Button variant="ghost" size="icon" onClick={() => setReturnLoan(null)}>
+                    <X className="w-5 h-5" />
+                </Button>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                <div>
+                    <p className="font-semibold text-slate-900 dark:text-white">
+                    {first(returnLoan.documents)?.title}
+                    </p>
+                    <Badge variant="outline" className="font-mono text-xs mt-1">
+                    {first(returnLoan.exemplaires)?.barcode}
+                    </Badge>
+                </div>
+
+                <div>
+                    <label className="text-sm font-medium mb-1 block">État du livre</label>
+                    <select
+                    value={condition}
+                    onChange={(e) => setCondition(e.target.value)}
+                    className="w-full h-10 px-3 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
+                    >
+                    <option value="good">Bon état</option>
+                    <option value="damaged">Endommagé</option>
+                    <option value="lost">Perdu</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label className="text-sm font-medium mb-1 block">Notes (optionnel)</label>
+                    <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Ex: couverture déchirée" />
+                </div>
+
+                {(() => {
+                    const daysLate = Math.max(0, Math.ceil((today.getTime() - new Date(returnLoan.due_date).getTime()) / (1000 * 60 * 60 * 24)))
+                    return daysLate > 0 ? (
+                    <div className="p-3 bg-red-50 dark:bg-red-500/10 rounded-lg text-sm text-red-700 dark:text-red-400">
+                        Retard de {daysLate} jour(s) → Pénalité : {daysLate * PENALTY_PER_DAY} FCFA
+                    </div>
+                    ) : (
+                    <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 rounded-lg text-sm text-emerald-700 dark:text-emerald-400">
+                        Retour à temps, aucune pénalité.
+                    </div>
+                    )
+                })()}
+
+                <Button onClick={handleReturn} disabled={saving} className="w-full bg-amber-500 hover:bg-amber-600 text-white">
+                    Confirmer le retour
+                </Button>
+                </CardContent>
+            </Card>
+            </div>
+        )}
+        </div>
     )
     }

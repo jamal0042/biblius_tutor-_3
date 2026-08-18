@@ -1,4 +1,3 @@
-    /* eslint-disable react-hooks/set-state-in-effect */
     "use client"
 
     import { useEffect, useState, createContext, useContext, useCallback } from 'react'
@@ -36,13 +35,24 @@
             return
         }
 
+        // ✅ CORRECTION : maybeSingle() au lieu de single() pour éviter le 406
         const { data, error } = await supabase
             .from('members')
             .select('*')
             .eq('id', session.user.id)
-            .single()
+            .maybeSingle()  // ← changement ici
 
-        if (error || !data) {
+        if (error) {
+            const isMissingProfileError = ['PGRST116', '406', '42P01', '42501'].includes(error.code ?? '')
+            const isMissingTableMessage = /does not exist|not found|profil member|members/i.test(error.message ?? '')
+
+            if (!isMissingProfileError && !isMissingTableMessage) {
+            console.error('Erreur chargement membre:', error)
+            }
+
+            setMember(null)
+        } else if (!data) {
+            // L'utilisateur est connecté mais n'a pas de profil member
             setMember(null)
         } else {
             setMember(data as Member)
@@ -56,14 +66,25 @@
     }, [supabase])
 
     useEffect(() => {
-        fetchMember()
+        let isMounted = true
+
+        const initializeAuth = async () => {
+        await fetchMember()
+        }
+
+        void initializeAuth()
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-        fetchMember()
+        if (isMounted) {
+            void fetchMember()
+        }
         })
 
-        return () => subscription.unsubscribe()
-    }, [fetchMember, supabase.auth])
+        return () => {
+        isMounted = false
+        subscription.unsubscribe()
+        }
+    }, [fetchMember, supabase])
 
     const signOut = async () => {
         await supabase.auth.signOut()

@@ -208,7 +208,7 @@
             <StatCard title="Total Documents" value={stats.totalDocuments} icon={BookOpen} color="text-blue-600" bg="bg-blue-100 dark:bg-blue-500/10" />
             <StatCard title="Membres Actifs" value={stats.totalMembers} icon={Users} color="text-emerald-600" bg="bg-emerald-100 dark:bg-emerald-500/10" />
             <StatCard title="Emprunts en Retard" value={stats.overdueLoans} icon={AlertCircle} color="text-red-600" bg="bg-red-100 dark:bg-red-500/10" />
-            <StatCard title="Amendes Impayées" value={`${stats.totalPenaltiesAmount.toLocaleString()} FCFA`} icon={TrendingUp} color="text-amber-600" bg="bg-amber-100 dark:bg-amber-500/10" />
+            <StatCard title="Amendes Impayées" value={`${stats.totalPenaltiesAmount.toLocaleString()} FC`} icon={TrendingUp} color="text-amber-600" bg="bg-amber-100 dark:bg-amber-500/10" />
         </div>
 
         <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
