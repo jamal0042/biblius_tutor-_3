@@ -15,6 +15,7 @@
     { href: "/admin/membres", label: "Membres en attente", icon: UserCheck, badge: "12" },
     { href: "/admin/membres/online", label: "Tous les membres", icon: Users },
     { href: "/admin/books", label: "Gestion des livres", icon: BookOpen },
+    { href: "/admin/emprunt", label: "Emprunts", icon: TrendingUp },
     { href: "/admin/circulation", label: "Circulation", icon: TrendingUp },
     { href: "/admin/penalites", label: "Pénalités", icon: AlertCircle },
     { href: "/admin/systeme", label: "Paramètres", icon: Settings },

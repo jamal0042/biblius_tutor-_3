@@ -10,7 +10,9 @@
     import { Card, CardContent } from "@/components/ui/card"
     import { Input } from "@/components/ui/input"
 
-    // 🌟 Interfaces adaptées à la nouvelle structure (relations = tableaux)
+    //types flexibles : la relation peut être un objet OU un tableau
+    type MaybeArray<T> = T | T[] | null
+
     interface AuteurData {
     id: string
     name: string
@@ -19,7 +21,7 @@
     interface DocumentData {
     title: string
     author_id: string | null
-    auteurs: AuteurData[] | null  // Relation vers la table auteurs
+    auteurs: MaybeArray<AuteurData>
     }
 
     interface DigitalResource {
@@ -32,20 +34,28 @@
     access_level: string
     created_at: string
     document_id: string | null
-    documents: DocumentData[] | null  // Tableau (Supabase renvoie toujours un tableau)
+    documents: MaybeArray<DocumentData>
     }
 
-    // Fonction utilitaire pour extraire le premier élément d'une relation
-    function first<T>(rel: T[] | null | undefined): T | null {
-    if (!rel || rel.length === 0) return null
-    return rel[0]
+    //FONCTION CLÉ : extrait un élément unique, que ce soit un objet ou un tableau
+    function toSingle<T>(rel: MaybeArray<T>): T | null {
+    if (!rel) return null
+    if (Array.isArray(rel)) return rel[0] ?? null
+    return rel
     }
 
-    // Fonction pour extraire le nom de l'auteur depuis la structure relationnelle
+    // Récupère le nom de l'auteur (gère objet ET tableau)
     function getAuthorName(resource: DigitalResource): string {
-    const doc = first(resource.documents)
-    const auteur = first(doc?.auteurs)
+    const doc = toSingle(resource.documents)
+    if (!doc) return "Auteur inconnu"
+    const auteur = toSingle(doc.auteurs)
     return auteur?.name || "Auteur inconnu"
+    }
+
+    //  Récupère le titre du document lié
+    function getDocTitle(resource: DigitalResource): string | null {
+    const doc = toSingle(resource.documents)
+    return doc?.title || null
     }
 
     export default function AdminDigitalResourcesPage() {
@@ -55,9 +65,9 @@
     const [searchTerm, setSearchTerm] = useState("")
 
     const fetchResources = useCallback(async () => {
-        setLoading(true)
-        // 🌟 REQUÊTE CORRIGÉE : utilise auteurs(name) au lieu de author
-        const { data, error } = await supabase
+    setLoading(true)
+    try {
+        const { data, error, status, statusText } = await supabase
         .from("digital_resources")
         .select(`
             *,
@@ -70,40 +80,46 @@
         .order("created_at", { ascending: false })
 
         if (error) {
-        console.error("Erreur chargement ressources:", error)
+        console.error(" Erreur Supabase détaillée:", {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint,
+            status,
+            statusText,
+        })
         }
+        
+        console.log(" Data reçue:", data)
         
         if (!error && data) {
         setResources(data as unknown as DigitalResource[])
         }
+    } catch (err) {
+        console.error(" Exception inattendue:", err)
+    } finally {
         setLoading(false)
+    }
     }, [supabase])
 
     useEffect(() => { fetchResources() }, [fetchResources])
 
-    // 🌟 FONCTION DE SUPPRESSION (inchangée)
     const handleDelete = async (id: string, url: string) => {
         if (!confirm("Êtes-vous sûr de vouloir supprimer cette ressource ? Cette action est irréversible.")) return
-        
         try {
-        // 1. Supprimer le fichier du stockage (si c'est un fichier local)
         if (url) {
             try {
             const urlObj = new URL(url)
-            if (urlObj.hostname.includes('supabase.co') && url.includes('/storage/')) {
-                const fileName = url.split('/').pop()
-                if (fileName) {
-                await supabase.storage.from('digital-resources').remove([fileName])
-                }
+            if (urlObj.hostname.includes("supabase.co") && url.includes("/storage/")) {
+                const fileName = url.split("/").pop()
+                if (fileName) await supabase.storage.from("digital-resources").remove([fileName])
             }
             } catch {
-            // URL externe, on ne supprime rien du storage
+            // URL externe, rien à supprimer du storage
             }
         }
-        // 2. Supprimer l'entrée de la base de données
         const { error } = await supabase.from("digital_resources").delete().eq("id", id)
         if (error) throw error
-        
         fetchResources()
         } catch (err) {
         console.error(err)
@@ -111,15 +127,12 @@
         }
     }
 
-    // 🌟 FILTRE ADAPTÉ : utilise la nouvelle structure
     const filteredResources = resources.filter((r) => {
         const normalized = searchTerm.trim().toLowerCase()
         if (!normalized) return true
-
         const title = r.title?.toLowerCase() ?? ""
-        const documentTitle = first(r.documents)?.title?.toLowerCase() ?? ""
+        const documentTitle = getDocTitle(r)?.toLowerCase() ?? ""
         const authorName = getAuthorName(r).toLowerCase()
-
         return title.includes(normalized) || documentTitle.includes(normalized) || authorName.includes(normalized)
     })
 
@@ -165,54 +178,40 @@
                 <tr><td colSpan={6} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">Aucune ressource numérique trouvée.</td></tr>
                 ) : (
                 filteredResources.map((resource) => {
-                    const doc = first(resource.documents)
+                    const docTitle = getDocTitle(resource)
                     const authorName = getAuthorName(resource)
                     const isLinkedToDocument = !!resource.document_id
 
                     return (
                     <tr key={resource.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
                         <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-slate-900 dark:text-white">
-                            {resource.title}
-                        </div>
-                        {doc && (
-                            <div className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">
-                            📘 Document lié : {doc.title}
-                            </div>
+                        <div className="text-sm font-medium text-slate-900 dark:text-white">{resource.title}</div>
+                        {docTitle && (
+                            <div className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5"> {docTitle}</div>
                         )}
-                        {resource.description && !doc && (
-                            <div className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
-                            {resource.description}
-                            </div>
+                        {resource.description && !docTitle && (
+                            <div className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">{resource.description}</div>
                         )}
                         </td>
                         <td className="px-6 py-4">
-                        <div className="text-sm text-slate-700 dark:text-slate-300">
-                            {authorName}
-                        </div>
+                        <div className="text-sm text-slate-700 dark:text-slate-300">{authorName}</div>
                         </td>
                         <td className="px-6 py-4">
-                        <Badge variant="outline" className="border-slate-300 dark:border-slate-700 capitalize">
-                            {resource.type}
-                        </Badge>
+                        <Badge variant="outline" className="border-slate-300 dark:border-slate-700 capitalize">{resource.type}</Badge>
                         </td>
                         <td className="px-6 py-4">
                         {isLinkedToDocument ? (
-                            <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400">
-                            📚 Livre
-                            </Badge>
+                            <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400">Livre</Badge>
                         ) : (
-                            <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400">
-                            📄 Ressource seule
-                            </Badge>
+                            <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400">📄 Ressource seule</Badge>
                         )}
                         </td>
                         <td className="px-6 py-4">
                         <Badge className={
-                            resource.access_level === "all" 
-                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400" 
-                            : resource.access_level === "student" 
-                            ? "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400" 
+                            resource.access_level === "all"
+                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400"
+                            : resource.access_level === "student"
+                            ? "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400"
                             : "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400"
                         }>
                             {resource.access_level === "all" ? "Tous" : resource.access_level === "student" ? "Étudiants" : "Staff"}
@@ -245,8 +244,7 @@
 
         <div className="p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-lg">
             <p className="text-sm text-blue-800 dark:text-blue-300">
-            💡 <strong>Astuce :</strong> Quand vous ajoutez un livre avec une version numérique via <strong>/admin/books/new</strong>, 
-            il apparaît automatiquement dans cette liste avec le badge <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 ml-1">📚 Livre</Badge>.
+                <strong>Astuce :</strong> Quand vous ajoutez un livre avec une version numérique via le catalogue physique, il apparaît automatiquement ici avec le badge <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 ml-1">Livre</Badge>.
             </p>
         </div>
         </div>

@@ -5,23 +5,45 @@
     import Link from "next/link"
     import { redirect } from "next/navigation"
     import { getCurrentMember, createServerSupabaseClient } from "@/lib/supabase/server"
+    import { ChatbotWidget } from "@/components/chatbot"
 
-    // --- Interfaces mises à jour : documents est un tableau [] ---
+    // Interfaces adaptées à la nouvelle structure (auteurs)
     interface LoanData {
     id: string
     due_date: string
     status: string
-    documents: { title: string; author: string }[] | null
+    documents: {
+        title: string
+        auteurs: { name: string }[] | null
+    }[] | null
     }
 
     interface ReservationData {
     id: string
     status: string
-    documents: { title: string; author: string }[] | null
+    documents: {
+        title: string
+        auteurs: { name: string }[] | null
+    }[] | null
     }
 
     interface PenaltyData {
     amount: number
+    }
+
+    // Fonction pour extraire le nom de l'auteur (gère objet ET tableau)
+    function getAuthorName(doc: LoanData["documents"] | ReservationData["documents"] | null | undefined): string {
+    if (!doc) return "Auteur inconnu"
+    const d = Array.isArray(doc) ? doc[0] : doc
+    if (!d) return "Auteur inconnu"
+    const auteur = d.auteurs?.[0]
+    return auteur?.name || "Auteur inconnu"
+    }
+
+    function getDocTitle(doc: LoanData["documents"] | ReservationData["documents"] | null | undefined): string {
+    if (!doc) return "Titre inconnu"
+    const d = Array.isArray(doc) ? doc[0] : doc
+    return d?.title || "Titre inconnu"
     }
 
     export default async function DashboardPage() {
@@ -30,16 +52,17 @@
 
     const supabase = await createServerSupabaseClient()
 
+    // 🌟 Requête adaptée : utilise auteurs(name) au lieu de author
     const { data: loans } = await supabase
         .from("prets")
-        .select(`id, due_date, status, documents (title, author)`)
+        .select(`id, due_date, status, documents (title, auteurs (name))`)
         .eq("member_id", member.id)
         .in("status", ["active", "overdue"])
         .order("due_date", { ascending: true })
 
     const { data: reservations } = await supabase
         .from("reservations")
-        .select(`id, status, documents (title, author)`)
+        .select(`id, status, documents (title, auteurs (name))`)
         .eq("member_id", member.id)
         .in("status", ["pending", "ready"])
         .order("created_at", { ascending: false })
@@ -114,7 +137,6 @@
                 <div className="space-y-3">
                     {[...overdueLoans, ...activeLoans].map((loan) => {
                     const isOverdue = new Date(loan.due_date) < today
-                    const doc = loan.documents?.[0] // <-- CORRECTION : on prend le 1er élément du tableau
                     
                     return (
                         <Card key={loan.id} className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-amber-500/30 transition-colors">
@@ -125,10 +147,10 @@
                             </div>
                             <div>
                                 <h3 className="font-semibold text-slate-900 dark:text-white">
-                                {doc?.title || "Titre inconnu"}
+                                {getDocTitle(loan.documents)}
                                 </h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                                {doc?.author || "Auteur inconnu"}
+                                {getAuthorName(loan.documents)}
                                 </p>
                             </div>
                             </div>
@@ -168,13 +190,12 @@
                 ) : (
                 <div className="space-y-3">
                     {typedReservations.map((res) => {
-                    const doc = res.documents?.[0] // <-- CORRECTION : on prend le 1er élément du tableau
                     return (
                         <Card key={res.id} className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
                         <CardContent className="p-4">
                             <div className="flex items-start justify-between mb-2">
                             <h3 className="font-semibold text-slate-900 dark:text-white text-sm line-clamp-1">
-                                {doc?.title || "Titre inconnu"}
+                                {getDocTitle(res.documents)}
                             </h3>
                             <Badge variant="outline" className={
                                 res.status === "ready" 
@@ -185,7 +206,7 @@
                             </Badge>
                             </div>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
-                            {doc?.author || "Auteur inconnu"}
+                            {getAuthorName(res.documents)}
                             </p>
                             {res.status === "ready" && (
                             <Button size="sm" className="w-full bg-amber-500 hover:bg-amber-600 text-white h-8 text-xs">
@@ -198,10 +219,27 @@
                     })}
                 </div>
                 )}
-            </div>
 
+                {/* 🤖 Carte de présentation du chatbot */}
+                <Card className="bg-gradient-to-br from-amber-500 to-orange-500 border-0 text-white">
+                <CardContent className="p-6">
+                    <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
+                    🤖 Assistant Biblius
+                    </h3>
+                    <p className="text-sm text-white/90 mb-4">
+                    Besoin d&apos;aide ? Posez-moi vos questions sur vos emprunts, pénalités ou le catalogue !
+                    </p>
+                    <p className="text-xs text-white/70">
+                    Cliquez sur l&apos;icône 💬 en bas à droite
+                    </p>
+                </CardContent>
+                </Card>
+            </div>
             </div>
         </main>
+
+        {/* 🤖 Chatbot flottant */}
+        <ChatbotWidget memberName={member.first_name} memberId={member.id} />
         </div>
     )
     }

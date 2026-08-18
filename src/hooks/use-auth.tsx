@@ -1,6 +1,7 @@
     "use client"
+    /* eslint-disable react-hooks/set-state-in-effect */
 
-    import { useEffect, useState, createContext, useContext, useCallback } from 'react'
+    import { useEffect, useState, createContext, useContext, useCallback, useRef } from 'react'
     import { createClient } from '@/lib/supabase/client'
     import type { Member, Role, MemberStatus } from '@/lib/roles'
     import { useRouter } from 'next/navigation'
@@ -24,13 +25,73 @@
     const [loading, setLoading] = useState(true)
     const supabase = createClient()
     const router = useRouter()
+    
+    const isCleaningUp = useRef(false)
+
+    // Fonction de nettoyage robuste de la session
+    const cleanupSession = useCallback(async () => {
+        if (isCleaningUp.current) return
+        isCleaningUp.current = true
+
+        try {
+        await supabase.auth.signOut({ scope: 'local' })
+        } catch {
+        // Ignorer
+        }
+
+        try {
+        Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('sb-') || key.includes('supabase')) {
+            localStorage.removeItem(key)
+            }
+        })
+        Object.keys(sessionStorage).forEach(key => {
+            if (key.startsWith('sb-') || key.includes('supabase')) {
+            sessionStorage.removeItem(key)
+            }
+        })
+        } catch {
+        // Ignorer
+        }
+
+        setMember(null)
+        setLoading(false)
+        isCleaningUp.current = false
+    }, [supabase])
 
     const fetchMember = useCallback(async () => {
         try {
-        // ✅ Utilisation de getUser() au lieu de getSession() (plus sécurisé)
+        // 🌟 ÉTAPE 1 : Vérifier d'abord s'il y a une session
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        // Pas de session → utilisateur non connecté (état NORMAL, pas une erreur)
+        if (!session) {
+            setMember(null)
+            setLoading(false)
+            return
+        }
+
+        // 🌟 ÉTAPE 2 : Session existe, on vérifie l'utilisateur
         const { data: { user }, error: userError } = await supabase.auth.getUser()
         
         if (userError) {
+            const errorMessage = userError.message?.toLowerCase() || ''
+            const errorName = userError.name || ''
+            
+            // 🌟 Cas 1 : JWT expiré ou invalide → nettoyer la session
+            if (
+            errorMessage.includes('expired') ||
+            errorMessage.includes('invalid jwt') ||
+            errorMessage.includes('invalid claims') ||
+            errorName === 'AuthApiError' ||
+            errorName === 'AuthSessionMissingError'
+            ) {
+            console.warn('🔐 Session invalide détectée, nettoyage...')
+            await cleanupSession()
+            return
+            }
+            
+            // Autres erreurs → log + reset
             console.error('Erreur utilisateur:', userError)
             setMember(null)
             setLoading(false)
@@ -43,6 +104,7 @@
             return
         }
 
+        // 🌟 ÉTAPE 3 : Utilisateur valide → chercher son profil
         const { data, error } = await supabase
             .from('members')
             .select('*')
@@ -50,33 +112,33 @@
             .maybeSingle()
 
         if (error) {
-            console.error('Erreur chargement membre:', error)
-            
-            if (error.code === 'PGRST303' || error.message?.includes('JWT')) {
-            console.warn('JWT expiré détecté, nettoyage...')
-            await supabase.auth.signOut({ scope: 'local' })
-            Object.keys(localStorage).forEach(key => {
-                if (key.startsWith('sb-')) localStorage.removeItem(key)
-            })
+            // Erreur JWT sur cette requête aussi → nettoyer
+            if (error.code === 'PGRST303' || error.message?.toLowerCase().includes('jwt')) {
+            console.warn('🔐 JWT expiré sur la requête membre, nettoyage...')
+            await cleanupSession()
+            return
             }
+            
+            console.error('Erreur chargement membre:', error)
             setMember(null)
         } else if (!data) {
-            console.warn('Utilisateur connecté mais pas de profil member')
+            // Utilisateur connecté mais pas de profil member
             setMember(null)
         } else {
             setMember(data as Member)
         }
         } catch (error) {
-        console.error('Erreur auth:', error)
+        console.error('Erreur auth inattendue:', error)
         setMember(null)
         } finally {
         setLoading(false)
         }
-    }, [supabase])
+    }, [supabase, cleanupSession])
 
     useEffect(() => {
+        // Chargement initial du membre (synchronisation avec le système Auth externe)
         // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchMember()
+        fetchMember()
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
         if (event === 'SIGNED_OUT') {
@@ -84,7 +146,7 @@
             setLoading(false)
             return
         }
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
             fetchMember()
         }
         })
@@ -93,8 +155,7 @@
     }, [fetchMember, supabase.auth])
 
     const signOut = async () => {
-        await supabase.auth.signOut()
-        setMember(null)
+        await cleanupSession()
         router.push('/login')
     }
 

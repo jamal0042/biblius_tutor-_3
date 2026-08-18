@@ -19,13 +19,15 @@
     }
 
     interface DocData {
-    id: string  // ✅ AJOUTÉ pour corriger l'erreur ligne 175
+    id: string
     title: string
-    author: string
+    auteurs: { id: string; name: string }[] | null
     }
 
     interface ExemplaireData {
+    id: string
     barcode: string
+    status: string
     }
 
     interface MemberOption {
@@ -39,7 +41,8 @@
     id: string
     barcode: string
     document_id: string
-    documents: DocData[] | null  // ✅ Tableau au lieu d'objet unique
+    status: string
+    documents: DocData[] | null
     }
 
     interface ActiveLoan {
@@ -58,15 +61,22 @@
     return rel[0]
     }
 
+    function getAuthorName(doc: DocData | null | undefined): string {
+    const auteur = first(doc?.auteurs)
+    return auteur?.name || "Auteur inconnu"
+    }
+
     export default function AdminCirculationPage() {
     const supabase = createClient()
 
     const [members, setMembers] = useState<MemberOption[]>([])
+    const [documentOptions, setDocumentOptions] = useState<DocData[]>([])
     const [availableExemplaires, setAvailableExemplaires] = useState<ExemplaireOption[]>([])
     const [loans, setLoans] = useState<ActiveLoan[]>([])
     const [loading, setLoading] = useState(true)
 
     const [memberId, setMemberId] = useState("")
+    const [documentId, setDocumentId] = useState("")
     const [barcodeInput, setBarcodeInput] = useState("")
     const [selectedExemplaire, setSelectedExemplaire] = useState<ExemplaireOption | null>(null)
     const [dueDate, setDueDate] = useState("")
@@ -80,11 +90,11 @@
         setLoading(true)
 
         try {
-        const [m, ex, l] = await Promise.all([
+        const [m, ex, l, docs] = await Promise.all([
             supabase.from("members").select("id, first_name, last_name, email").eq("status", "active"),
             supabase
             .from("exemplaires")
-            .select("id, barcode, document_id, documents (id, title, author)")
+            .select("id, barcode, document_id, status, documents (id, title, auteurs (id, name))")
             .eq("status", "available")
             .order("barcode", { ascending: true }),
             supabase
@@ -92,16 +102,21 @@
             .select(`
                 id, loan_date, due_date, exemplaire_id,
                 members (id, first_name, last_name, email),
-                documents (id, title, author),
-                exemplaires (barcode)
+                documents (id, title, auteurs (id, name)),
+                exemplaires (id, barcode, status)
             `)
             .in("status", ["active", "overdue"])
-            .order("due_date", { ascending: true })
+            .order("due_date", { ascending: true }),
+            supabase
+            .from("documents")
+            .select("id, title, auteurs (id, name)")
+            .order("title", { ascending: true })
         ])
 
         setMembers((m.data as unknown as MemberOption[]) || [])
         setAvailableExemplaires((ex.data as unknown as ExemplaireOption[]) || [])
         setLoans((l.data as unknown as ActiveLoan[]) || [])
+        setDocumentOptions((docs.data as unknown as DocData[]) || [])
         } finally {
         setLoading(false)
         }
@@ -115,13 +130,18 @@
         void fetchData()
     }, [loadData])
 
+    const filteredExemplaires = documentId
+        ? availableExemplaires.filter((ex) => ex.document_id === documentId)
+        : availableExemplaires
+
     const handleBarcodeSearch = () => {
         const trimmed = barcodeInput.trim()
         if (!trimmed) {
         setSelectedExemplaire(null)
         return
         }
-        const found = availableExemplaires.find(
+        const source = filteredExemplaires.length > 0 ? filteredExemplaires : availableExemplaires
+        const found = source.find(
         (ex) => ex.barcode.toLowerCase() === trimmed.toLowerCase()
         )
         setSelectedExemplaire(found || null)
@@ -129,7 +149,12 @@
 
     const handleCreateLoan = async () => {
         if (!memberId || !selectedExemplaire || !dueDate) {
-        alert("Veuillez remplir tous les champs et scanner un code-barres valide.")
+        alert("Veuillez remplir tous les champs et sélectionner un exemplaire disponible.")
+        return
+        }
+
+        if (documentId && selectedExemplaire.document_id !== documentId) {
+        alert("L'exemplaire sélectionné ne correspond pas au document choisi.")
         return
         }
 
@@ -163,6 +188,7 @@
             .eq("id", selectedExemplaire.id)
 
         setMemberId("")
+        setDocumentId("")
         setBarcodeInput("")
         setSelectedExemplaire(null)
         setDueDate("")
@@ -182,7 +208,7 @@
         const daysLate = Math.max(0, Math.ceil((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24)))
         const penalty = daysLate * PENALTY_PER_DAY
         const member = first(returnLoan.members)
-        const doc = first(returnLoan.documents)  // ✅ Maintenant doc.id existe
+        const doc = first(returnLoan.documents)
 
         // 1. Insérer le retour
         await supabase.from("retours").insert({
@@ -267,6 +293,26 @@
                 </select>
                 </div>
 
+                <div>
+                <label className="text-sm font-medium mb-1 block">Catalogue</label>
+                <select
+                    value={documentId}
+                    onChange={(e) => {
+                    setDocumentId(e.target.value)
+                    setSelectedExemplaire(null)
+                    setBarcodeInput("")
+                    }}
+                    className="w-full h-10 px-3 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                >
+                    <option value="">-- Choisir un document --</option>
+                    {documentOptions.map((doc) => (
+                    <option key={doc.id} value={doc.id}>
+                        {doc.title} — {getAuthorName(doc)}
+                    </option>
+                    ))}
+                </select>
+                </div>
+
                 <div className="md:col-span-2">
                 <label className="text-sm font-medium mb-1 block">
                     Code-barres de l&apos;exemplaire
@@ -291,14 +337,14 @@
                         ✓ {first(selectedExemplaire.documents)?.title}
                     </div>
                     <div className="text-emerald-700 dark:text-emerald-400 text-xs">
-                        {first(selectedExemplaire.documents)?.author} • {selectedExemplaire.barcode}
+                        {getAuthorName(first(selectedExemplaire.documents))} • {selectedExemplaire.barcode}
                     </div>
                     </div>
                 )}
                 {barcodeInput && !selectedExemplaire && (
                     <div className="mt-2 p-2 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded text-sm flex items-center gap-2 text-red-700 dark:text-red-400">
                     <AlertCircle className="w-4 h-4" />
-                    Aucun exemplaire disponible avec ce code
+                    Aucun exemplaire disponible avec ce code pour ce document.
                     </div>
                 )}
                 </div>
@@ -361,7 +407,7 @@
                             <div className="font-medium text-slate-900 dark:text-white">
                                 {doc?.title || "Inconnu"}
                             </div>
-                            <div className="text-sm text-slate-500">{doc?.author}</div>
+                            <div className="text-sm text-slate-500">{getAuthorName(doc)}</div>
                             </td>
                             <td className="px-6 py-4">
                             <Badge variant="outline" className="font-mono text-xs">

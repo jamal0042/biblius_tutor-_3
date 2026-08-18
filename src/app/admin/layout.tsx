@@ -43,6 +43,7 @@
             <SidebarLink href="/admin/membres/online" icon={Users} label="Tous les membres" />
             <SidebarLink href="/admin/membres/invitations" icon={UserPlus} label="Invitations" />
             <SidebarLink href="/admin/books" icon={BookOpen} label="Gestion des livres" />
+            <SidebarLink href="/admin/emprunt" icon={TrendingUp} label="Emprunts" />
             <SidebarLink href="/admin/circulation" icon={TrendingUp} label="Circulation" />
             <SidebarLink href="/admin/penalites" icon={AlertCircle} label="Pénalités" />
             <SidebarLink href="/admin/numerique" icon={FileText} label="Ressources Numériques" />
