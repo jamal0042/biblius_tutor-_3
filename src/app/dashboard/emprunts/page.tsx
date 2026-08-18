@@ -1,8 +1,10 @@
     "use client"
 
-    import { useState } from "react"
+    import { useEffect, useState } from "react"
     import { useRouter } from "next/navigation"
     import { createClient } from "@/lib/supabase/client"
+    import { useAuth } from "@/hooks/use-auth"
+    import { isStaff } from "@/lib/roles"
     import { Button } from "@/components/ui/button"
     import { Card, CardContent } from "@/components/ui/card"
     import { Input } from "@/components/ui/input"
@@ -13,11 +15,11 @@
     export default function EmpruntsPage() {
     const router = useRouter()
     const supabase = createClient()
+    const { member, loading: authLoading } = useAuth()
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState(false)
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
-
     const [formData, setFormData] = useState({
         title: "",
         description: "",
@@ -25,6 +27,23 @@
         category: "projet_tutore",
         access_level: "all",
     })
+
+    useEffect(() => {
+        if (authLoading) return
+
+        if (!member) {
+        router.replace("/login")
+        return
+        }
+
+        if (!isStaff(member.role)) {
+        router.replace("/dashboard")
+        }
+    }, [authLoading, member, router])
+
+    if (authLoading || !member || !isStaff(member.role)) {
+        return null
+    }
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }))

@@ -1,3 +1,5 @@
+    "use client"
+
     import { Header } from "@/components/header"
     import { Footer } from "@/components/footer"
     import { Calendar, CheckCircle, Mail, Phone } from "lucide-react"

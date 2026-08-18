@@ -1,6 +1,16 @@
     import { redirect } from "next/navigation"
     import Link from "next/link"
-    import { BookOpen, LayoutDashboard, Clock, BookMarked, User, Menu } from "lucide-react"
+    import { 
+    BookOpen, 
+    LayoutDashboard, 
+    Clock, 
+    BookMarked, 
+    User, 
+    Menu,
+    FileBarChart,
+    Settings,
+    UserCircle
+    } from "lucide-react"
     import { getCurrentMember } from "@/lib/supabase/server"
     import { ROLE_LABELS, isStaff } from "@/lib/roles"
     import { ThemeToggle } from "@/components/theme-toggle"
@@ -13,7 +23,6 @@
     }: {
     children: React.ReactNode
     }) {
-    // 1. Vérification de l'authentification côté serveur
     const member = await getCurrentMember()
 
     if (!member) {
@@ -40,10 +49,14 @@
             </div>
         
             <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+            {/* Section principale */}
             <SidebarLink href="/dashboard" icon={LayoutDashboard} label="Tableau de bord" />
             <SidebarLink href="/catalogue" icon={BookOpen} label="Catalogue" />
             <SidebarLink href="/dashboard/emprunts" icon={Clock} label="Mes Emprunts" />
             <SidebarLink href="/dashboard/numerique" icon={BookMarked} label="Ressources Numériques" />
+            
+            {/* 🌟 Section Rapports */}
+            <SidebarLink href="/dashboard/rapports" icon={FileBarChart} label="Mes Rapports" />
             
             {/* Section Admin visible uniquement pour le personnel */}
             {isStaff(member.role) && (
@@ -54,6 +67,15 @@
                 <SidebarLink href="/admin" icon={User} label="Gestion" />
                 </div>
             )}
+
+            {/* 🌟 Section Mon compte (Paramètres) */}
+            <div className="pt-4 mt-4 border-t border-slate-200 dark:border-slate-800">
+                <p className="px-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+                Mon compte
+                </p>
+                <SidebarLink href="/dashboard/profil" icon={UserCircle} label="Mon Profil" />
+                <SidebarLink href="/dashboard/parametres" icon={Settings} label="Paramètres" />
+            </div>
             </nav>
 
             {/* Profil utilisateur en bas de sidebar */}

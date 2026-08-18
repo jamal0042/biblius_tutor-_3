@@ -1,5 +1,4 @@
     "use client"
-    /* eslint-disable react-hooks/set-state-in-effect */
 
     import { useEffect, useState, createContext, useContext, useCallback, useRef } from 'react'
     import { createClient } from '@/lib/supabase/client'

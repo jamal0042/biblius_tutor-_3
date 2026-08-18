@@ -49,13 +49,35 @@
 
     @layer base {
     * {
-        /* Utilisation de CSS standard au lieu de @apply pour éviter l'erreur Tailwind v4 */
         border-color: hsl(var(--border));
+        box-sizing: border-box;
     }
-    
+
+    html {
+        scroll-behavior: smooth;
+    }
+
     body {
-        /* Utilisation de CSS standard pour le fond et le texte */
+        min-height: 100vh;
+        overflow-x: hidden;
         background-color: hsl(var(--background));
         color: hsl(var(--foreground));
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    img,
+    svg,
+    video,
+    canvas {
+        display: block;
+        max-width: 100%;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+        font: inherit;
     }
     }

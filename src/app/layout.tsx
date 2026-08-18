@@ -10,6 +10,13 @@ export const metadata: Metadata = {
   description: "Plateforme moderne de gestion bibliothécaire",
 }
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
