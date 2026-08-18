@@ -67,6 +67,11 @@
         setSuccess(false)
 
         try {
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        if (userError || !user) {
+            throw new Error("Vous devez être connecté pour ajouter une ressource numérique.")
+        }
+
         // 1. Générer un nom de fichier unique pour éviter les conflits
         const fileExt = selectedFile.name.split('.').pop()
         const fileName = `${crypto.randomUUID()}.${fileExt}`

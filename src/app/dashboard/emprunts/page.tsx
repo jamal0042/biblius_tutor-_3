@@ -49,6 +49,11 @@
         setSuccess(false)
 
         try {
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        if (userError || !user) {
+            throw new Error("Vous devez être connecté pour ajouter une ressource numérique.")
+        }
+
         const fileExt = selectedFile.name.split(".").pop() ?? "pdf"
         const fileName = `${crypto.randomUUID()}.${fileExt}`
 

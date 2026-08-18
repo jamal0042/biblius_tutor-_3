@@ -27,38 +27,41 @@
 
     const fetchMember = useCallback(async () => {
         try {
-        const { data: { session } } = await supabase.auth.getSession()
+        // ✅ Utilisation de getUser() au lieu de getSession() (plus sécurisé)
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
         
-        if (!session) {
+        if (userError) {
+            console.error('Erreur utilisateur:', userError)
             setMember(null)
             setLoading(false)
             return
         }
 
-        // ✅ CORRECTION : maybeSingle() au lieu de single() pour éviter le 406
+        if (!user) {
+            setMember(null)
+            setLoading(false)
+            return
+        }
+
         const { data, error } = await supabase
             .from('members')
             .select('*')
-            .eq('id', session.user.id)
-            .maybeSingle()  // ← changement ici
+            .eq('id', user.id)
+            .maybeSingle()
 
         if (error) {
-            const errorCode = typeof error.code === 'string' || typeof error.code === 'number' ? String(error.code) : ''
-            const errorMessage = typeof error.message === 'string' ? error.message : ''
-            const normalizedErrorText = `${errorCode} ${errorMessage}`.toLowerCase()
-            const isEmptyObjectError = typeof error === 'object' && error !== null && Object.keys(error as unknown as Record<string, unknown>).length === 0
-
-            const isMissingProfileError = ['PGRST116', '406', '42P01', '42501'].includes(errorCode)
-            const isMissingTableMessage = /(does not exist|not found|missing.*profile|profil.*member|profile.*member|table.*members|members)/i.test(normalizedErrorText)
-            const isExpectedSilentError = isMissingProfileError || isMissingTableMessage || isEmptyObjectError
-
-            if (!isExpectedSilentError) {
             console.error('Erreur chargement membre:', error)
+            
+            if (error.code === 'PGRST303' || error.message?.includes('JWT')) {
+            console.warn('JWT expiré détecté, nettoyage...')
+            await supabase.auth.signOut({ scope: 'local' })
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith('sb-')) localStorage.removeItem(key)
+            })
             }
-
             setMember(null)
         } else if (!data) {
-            // L'utilisateur est connecté mais n'a pas de profil member
+            console.warn('Utilisateur connecté mais pas de profil member')
             setMember(null)
         } else {
             setMember(data as Member)
@@ -72,25 +75,22 @@
     }, [supabase])
 
     useEffect(() => {
-        let isMounted = true
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchMember()
 
-        const initializeAuth = async () => {
-        await fetchMember()
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+        if (event === 'SIGNED_OUT') {
+            setMember(null)
+            setLoading(false)
+            return
         }
-
-        void initializeAuth()
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-        if (isMounted) {
-            void fetchMember()
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            fetchMember()
         }
         })
 
-        return () => {
-        isMounted = false
-        subscription.unsubscribe()
-        }
-    }, [fetchMember, supabase])
+        return () => subscription.unsubscribe()
+    }, [fetchMember, supabase.auth])
 
     const signOut = async () => {
         await supabase.auth.signOut()

@@ -36,15 +36,15 @@
 
     export async function getCurrentMember(): Promise<Member | null> {
     const supabase = await createServerSupabaseClient()
-    
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) return null
+
+    const { data: { user }, error } = await supabase.auth.getUser()
+    if (error || !user) return null
 
     const { data: member } = await supabase
         .from('members')
         .select('*')
-        .eq('id', session.user.id)
-        .single()
+        .eq('id', user.id)
+        .maybeSingle()
 
     return member as Member | null
     }

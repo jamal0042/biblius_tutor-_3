@@ -3,7 +3,7 @@
     import { useState, useEffect } from "react"
     import { useRouter } from "next/navigation"
     import { createClient } from "@/lib/supabase/client"
-    import { Save, Loader2, ArrowLeft, BookOpen, FileText, HardDrive, Plus } from "lucide-react"
+    import { Save, Loader2, ArrowLeft, BookOpen, FileText, HardDrive, Plus, AlertCircle } from "lucide-react"
     import { Button } from "@/components/ui/button"
     import { Input } from "@/components/ui/input"
     import { Label } from "@/components/ui/label"
@@ -61,7 +61,7 @@
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const rawValue = e.target.value
         const value = e.target.type === "number"
-        ? (e.target.name === "total_exemplaires" ? Math.max(1, Number(rawValue) || 1) : Number(rawValue) || 0)
+        ? (e.target.name === "total_exemplaires" ? Math.max(0, Number(rawValue) || 0) : Number(rawValue) || 0)
         : rawValue
         setFormData((prev) => ({ ...prev, [e.target.name]: value }))
     }
@@ -145,6 +145,13 @@
         setSuccess(false)
 
         try {
+        // Vérification de l'utilisateur connecté
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        if (userError || !user) {
+            throw new Error("Vous devez être connecté pour ajouter un document.")
+        }
+
+        // Résolution de l'auteur
         let resolvedAuthorId = formData.author_id
         if (!resolvedAuthorId && authorSearch.trim()) {
             resolvedAuthorId = await ensureAuthor(authorSearch)
@@ -154,6 +161,11 @@
             throw new Error("Veuillez sélectionner ou créer un auteur")
         }
 
+        // Validation : il faut au moins un exemplaire physique OU une version numérique
+        if (formData.total_exemplaires === 0 && !formData.has_digital) {
+            throw new Error("Vous devez ajouter soit des exemplaires physiques, soit une version numérique (ou les deux).")
+        }
+
         const hasPhysical = formData.total_exemplaires > 0
         const format = hasPhysical && formData.has_digital
             ? "hybrid"
@@ -161,24 +173,36 @@
             ? "physique"
             : "numerique"
 
+        // Upload du fichier numérique si présent
         let uploadedDigitalUrl = formData.digital_url || null
 
         if (formData.has_digital && selectedDigitalFile) {
+            try {
             const fileExt = selectedDigitalFile.name.split(".").pop() ?? "pdf"
             const fileName = `${crypto.randomUUID()}.${fileExt}`
+            
             const { error: uploadError } = await supabase.storage
-            .from("digital-resources")
-            .upload(fileName, selectedDigitalFile)
+                .from("digital-resources")
+                .upload(fileName, selectedDigitalFile, {
+                cacheControl: "3600",
+                upsert: false,
+                })
 
-            if (uploadError) throw uploadError
+            if (uploadError) {
+                throw new Error(`Échec de l'upload du fichier : ${uploadError.message}. Vérifiez que le bucket "digital-resources" existe et est public.`)
+            }
 
             const { data: publicData } = supabase.storage
-            .from("digital-resources")
-            .getPublicUrl(fileName)
+                .from("digital-resources")
+                .getPublicUrl(fileName)
 
             uploadedDigitalUrl = publicData.publicUrl
+            } catch (uploadErr) {
+            throw uploadErr instanceof Error ? uploadErr : new Error("Erreur lors de l'upload du fichier")
+            }
         }
 
+        // 1. Création de la notice bibliographique
         const { data: doc, error: dbError } = await supabase
             .from("documents")
             .insert({
@@ -196,39 +220,53 @@
             file_path: formData.has_digital ? (uploadedDigitalUrl || formData.digital_url || null) : null,
             total_acces_numeriques: formData.has_digital ? 1 : 0,
             acces_numeriques_disponibles: formData.has_digital ? 1 : 0,
-            total_exemplaires: formData.total_exemplaires,
-            exemplaires_disponibles: formData.total_exemplaires,
+            total_exemplaires: hasPhysical ? formData.total_exemplaires : 0,
+            exemplaires_disponibles: hasPhysical ? formData.total_exemplaires : 0,
             })
             .select()
             .single()
 
-        if (dbError) throw dbError
+        if (dbError) {
+            console.error("Erreur Supabase documents:", dbError)
+            throw new Error(`Erreur base de données : ${dbError.message}`)
+        }
         if (!doc) throw new Error("Document non créé")
 
+        // 2. Création de l'entrée dans digital_resources (pour que le livre apparaisse dans le catalogue numérique)
         if (formData.has_digital && uploadedDigitalUrl) {
             const { error: digitalError } = await supabase.from("digital_resources").insert({
             title: formData.title,
             description: formData.description || null,
             url: uploadedDigitalUrl,
-            type: selectedDigitalFile ? (selectedDigitalFile.name.split(".").pop() ?? "pdf") : (formData.type === "book" ? "pdf" : formData.type),
-            category: formData.type === "book" ? "book" : "projet_tutore",
+            type: selectedDigitalFile 
+                ? (selectedDigitalFile.name.split(".").pop() ?? "pdf") 
+                : (formData.type === "book" ? "pdf" : formData.type),
+            category: formData.type,
             access_level: "all",
             document_id: doc.id,
             })
 
-            if (digitalError) throw new Error(`Document créé, mais l'upload numérique n'a pas pu être ajouté au catalogue : ${digitalError.message}`)
+            if (digitalError) {
+            console.error("Erreur digital_resources:", digitalError)
+            throw new Error(`Document créé, mais erreur dans le catalogue numérique : ${digitalError.message}`)
+            }
         }
 
+        // 3. Création des exemplaires physiques
         if (hasPhysical) {
             const exemplaires = Array.from({ length: formData.total_exemplaires }, (_, i) => ({
             document_id: doc.id,
             barcode: generateBarcode(i),
+            inventory_code: `INV-${doc.id.slice(0, 8)}-${i + 1}`,
             status: "available",
             acquisition_date: new Date().toISOString().split("T")[0],
             }))
 
             const { error: exError } = await supabase.from("exemplaires").insert(exemplaires)
-            if (exError) throw new Error(`Document créé mais erreur sur les exemplaires : ${exError.message}`)
+            if (exError) {
+            console.error("Erreur exemplaires:", exError)
+            throw new Error(`Document créé mais erreur sur les exemplaires : ${exError.message}`)
+            }
         }
 
         setSuccess(true)
@@ -236,6 +274,7 @@
             router.push("/admin/books")
         }, 1500)
         } catch (err: unknown) {
+        console.error("Erreur complète:", err)
         const errorMessage = err instanceof Error ? err.message : "Erreur lors de l'ajout."
         setError(errorMessage)
         setLoading(false)
@@ -260,7 +299,10 @@
 
         {error && (
             <Card className="border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/20">
-            <CardContent className="p-4 text-sm text-red-700 dark:text-red-400">{error}</CardContent>
+            <CardContent className="p-4 text-sm text-red-700 dark:text-red-400 flex items-start gap-2">
+                <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                <span>{error}</span>
+            </CardContent>
             </Card>
         )}
 
@@ -307,6 +349,7 @@
                         }
                         }}
                         onFocus={() => setShowAuthorSuggestions(true)}
+                        onBlur={() => setTimeout(() => setShowAuthorSuggestions(false), 200)}
                         placeholder="Tapez le nom de l'auteur..."
                         required
                     />
@@ -317,6 +360,7 @@
                             key={author.id}
                             type="button"
                             className="flex w-full items-center justify-between rounded px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                            onMouseDown={(e) => e.preventDefault()}
                             onClick={() => selectAuthor(author)}
                             >
                             <span>{author.name}</span>
@@ -334,7 +378,7 @@
                             try {
                             await ensureAuthor(authorSearch)
                             } catch (err) {
-                            setError(err instanceof Error ? err.message : "Erreur lors de la création de l’auteur")
+                            setError(err instanceof Error ? err.message : "Erreur lors de la création de l'auteur")
                             }
                         }}
                         >
@@ -369,7 +413,7 @@
                     name="type"
                     value={formData.type}
                     onChange={handleChange}
-                    className="flex h-10 w-full rounded-md border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
+                    className="flex h-10 w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white"
                     >
                     <option value="book">Livre</option>
                     <option value="thesis">Thèse</option>
@@ -385,7 +429,7 @@
                     name="language"
                     value={formData.language}
                     onChange={handleChange}
-                    className="flex h-10 w-full rounded-md border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
+                    className="flex h-10 w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white"
                     >
                     <option value="fr">Français</option>
                     <option value="en">Anglais</option>
@@ -416,8 +460,8 @@
                     value={formData.total_exemplaires}
                     onChange={handleChange}
                 />
-                <p className="text-xs text-slate-500">
-                    Chaque exemplaire recevra automatiquement un code-barres unique.
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Mettez 0 si le document est uniquement numérique. Chaque exemplaire recevra un code-barres unique.
                 </p>
                 </div>
             </CardContent>
@@ -452,7 +496,7 @@
                     />
                     {selectedDigitalFile && (
                         <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                        {selectedDigitalFile.name}
+                        ✅ {selectedDigitalFile.name} ({(selectedDigitalFile.size / 1024 / 1024).toFixed(2)} Mo)
                         </p>
                     )}
                     </div>
@@ -466,6 +510,9 @@
                         onChange={handleChange}
                         placeholder="https://example.com/document.pdf"
                     />
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Si vous ne téléchargez pas de fichier, collez ici une URL vers le document.
+                    </p>
                     </div>
                 </div>
                 )}
@@ -482,6 +529,7 @@
                 value={formData.description}
                 onChange={handleChange}
                 className="mt-2"
+                placeholder="Décrivez le contenu du document..."
                 />
             </CardContent>
             </Card>
