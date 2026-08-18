@@ -10,6 +10,18 @@
     import { Card, CardContent } from "@/components/ui/card"
     import { Input } from "@/components/ui/input"
 
+    // 🌟 Interfaces adaptées à la nouvelle structure (relations = tableaux)
+    interface AuteurData {
+    id: string
+    name: string
+    }
+
+    interface DocumentData {
+    title: string
+    author_id: string | null
+    auteurs: AuteurData[] | null  // Relation vers la table auteurs
+    }
+
     interface DigitalResource {
     id: string
     title: string
@@ -19,7 +31,21 @@
     category: string
     access_level: string
     created_at: string
-    documents: { title: string; author: string } | null
+    document_id: string | null
+    documents: DocumentData[] | null  // Tableau (Supabase renvoie toujours un tableau)
+    }
+
+    // Fonction utilitaire pour extraire le premier élément d'une relation
+    function first<T>(rel: T[] | null | undefined): T | null {
+    if (!rel || rel.length === 0) return null
+    return rel[0]
+    }
+
+    // Fonction pour extraire le nom de l'auteur depuis la structure relationnelle
+    function getAuthorName(resource: DigitalResource): string {
+    const doc = first(resource.documents)
+    const auteur = first(doc?.auteurs)
+    return auteur?.name || "Auteur inconnu"
     }
 
     export default function AdminDigitalResourcesPage() {
@@ -30,49 +56,71 @@
 
     const fetchResources = useCallback(async () => {
         setLoading(true)
+        // 🌟 REQUÊTE CORRIGÉE : utilise auteurs(name) au lieu de author
         const { data, error } = await supabase
         .from("digital_resources")
-        .select(`*, documents (title, author)`)
+        .select(`
+            *,
+            documents (
+            title,
+            author_id,
+            auteurs (id, name)
+            )
+        `)
         .order("created_at", { ascending: false })
 
-        if (!error && data) setResources(data as DigitalResource[])
+        if (error) {
+        console.error("Erreur chargement ressources:", error)
+        }
+        
+        if (!error && data) {
+        setResources(data as unknown as DigitalResource[])
+        }
         setLoading(false)
     }, [supabase])
 
     useEffect(() => { fetchResources() }, [fetchResources])
 
-    // 🌟 FONCTION DE SUPPRESSION
+    // 🌟 FONCTION DE SUPPRESSION (inchangée)
     const handleDelete = async (id: string, url: string) => {
         if (!confirm("Êtes-vous sûr de vouloir supprimer cette ressource ? Cette action est irréversible.")) return
         
         try {
-        // 1. Supprimer le fichier du stockage (si l'URL existe)
+        // 1. Supprimer le fichier du stockage (si c'est un fichier local)
         if (url) {
-            const fileName = url.split('/').pop()
-            if (fileName) {
-            await supabase.storage.from('digital-resources').remove([fileName])
+            try {
+            const urlObj = new URL(url)
+            if (urlObj.hostname.includes('supabase.co') && url.includes('/storage/')) {
+                const fileName = url.split('/').pop()
+                if (fileName) {
+                await supabase.storage.from('digital-resources').remove([fileName])
+                }
+            }
+            } catch {
+            // URL externe, on ne supprime rien du storage
             }
         }
         // 2. Supprimer l'entrée de la base de données
         const { error } = await supabase.from("digital_resources").delete().eq("id", id)
         if (error) throw error
         
-        fetchResources() // Rafraîchir la liste
+        fetchResources()
         } catch (err) {
         console.error(err)
         alert("Erreur lors de la suppression de la ressource.")
         }
     }
 
+    // 🌟 FILTRE ADAPTÉ : utilise la nouvelle structure
     const filteredResources = resources.filter((r) => {
         const normalized = searchTerm.trim().toLowerCase()
         if (!normalized) return true
 
         const title = r.title?.toLowerCase() ?? ""
-        const documentTitle = r.documents?.title?.toLowerCase() ?? ""
-        const author = r.documents?.author?.toLowerCase() ?? ""
+        const documentTitle = first(r.documents)?.title?.toLowerCase() ?? ""
+        const authorName = getAuthorName(r).toLowerCase()
 
-        return title.includes(normalized) || documentTitle.includes(normalized) || author.includes(normalized)
+        return title.includes(normalized) || documentTitle.includes(normalized) || authorName.includes(normalized)
     })
 
     if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 animate-spin text-amber-500" /></div>
@@ -82,7 +130,9 @@
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
             <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Ressources Numériques</h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1">Gérez les documents numériques disponibles pour les membres.</p>
+            <p className="text-slate-500 dark:text-slate-400 mt-1">
+                Gérez les documents numériques. Les livres avec version numérique apparaissent automatiquement ici.
+            </p>
             </div>
             <Link href="/admin/numerique/new">
             <Button className="bg-amber-500 hover:bg-amber-600 text-white"><Plus className="w-4 h-4 mr-2" /> Ajouter une ressource</Button>
@@ -93,7 +143,7 @@
             <CardContent className="p-4">
             <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input placeholder="Rechercher par titre, document ou auteur..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
+                <Input placeholder="Rechercher par titre ou auteur..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
             </div>
             </CardContent>
         </Card>
@@ -103,51 +153,101 @@
             <thead className="bg-slate-50 dark:bg-slate-800">
                 <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Titre</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Auteur</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Type</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Source</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Accès</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
                 </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                 {filteredResources.length === 0 ? (
-                <tr><td colSpan={4} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">Aucune ressource numérique trouvée.</td></tr>
+                <tr><td colSpan={6} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">Aucune ressource numérique trouvée.</td></tr>
                 ) : (
-                filteredResources.map((resource) => (
+                filteredResources.map((resource) => {
+                    const doc = first(resource.documents)
+                    const authorName = getAuthorName(resource)
+                    const isLinkedToDocument = !!resource.document_id
+
+                    return (
                     <tr key={resource.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                    <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-slate-900 dark:text-white">{resource.title}</div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">{resource.description}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                        <Badge variant="outline" className="border-slate-300 dark:border-slate-700 capitalize">{resource.type}</Badge>
-                    </td>
-                    <td className="px-6 py-4">
-                        <Badge className={resource.access_level === "all" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400" : resource.access_level === "student" ? "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400" : "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400"}>
-                        {resource.access_level === "all" ? "Tous" : resource.access_level === "student" ? "Étudiants" : "Staff"}
-                        </Badge>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-2">
-                        <a href={resource.url} target="_blank" rel="noopener noreferrer">
-                            <Button size="icon" variant="ghost" className="text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white" title="Voir le fichier">
-                            <ExternalLink className="w-4 h-4" />
-                            </Button>
-                        </a>
-                        <Link href={`/admin/numerique/${resource.id}/edit`}>
-                            <Button size="icon" variant="ghost" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950" title="Modifier">
-                            <Pencil className="w-4 h-4" />
-                            </Button>
-                        </Link>
-                        <Button size="icon" variant="ghost" onClick={() => handleDelete(resource.id, resource.url)} className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950" title="Supprimer">
-                            <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <td className="px-6 py-4">
+                        <div className="text-sm font-medium text-slate-900 dark:text-white">
+                            {resource.title}
                         </div>
-                    </td>
+                        {doc && (
+                            <div className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">
+                            📘 Document lié : {doc.title}
+                            </div>
+                        )}
+                        {resource.description && !doc && (
+                            <div className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
+                            {resource.description}
+                            </div>
+                        )}
+                        </td>
+                        <td className="px-6 py-4">
+                        <div className="text-sm text-slate-700 dark:text-slate-300">
+                            {authorName}
+                        </div>
+                        </td>
+                        <td className="px-6 py-4">
+                        <Badge variant="outline" className="border-slate-300 dark:border-slate-700 capitalize">
+                            {resource.type}
+                        </Badge>
+                        </td>
+                        <td className="px-6 py-4">
+                        {isLinkedToDocument ? (
+                            <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400">
+                            📚 Livre
+                            </Badge>
+                        ) : (
+                            <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400">
+                            📄 Ressource seule
+                            </Badge>
+                        )}
+                        </td>
+                        <td className="px-6 py-4">
+                        <Badge className={
+                            resource.access_level === "all" 
+                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400" 
+                            : resource.access_level === "student" 
+                            ? "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400" 
+                            : "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400"
+                        }>
+                            {resource.access_level === "all" ? "Tous" : resource.access_level === "student" ? "Étudiants" : "Staff"}
+                        </Badge>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end gap-2">
+                            <a href={resource.url} target="_blank" rel="noopener noreferrer">
+                            <Button size="icon" variant="ghost" className="text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white" title="Voir le fichier">
+                                <ExternalLink className="w-4 h-4" />
+                            </Button>
+                            </a>
+                            <Link href={`/admin/numerique/${resource.id}/edit`}>
+                            <Button size="icon" variant="ghost" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950" title="Modifier">
+                                <Pencil className="w-4 h-4" />
+                            </Button>
+                            </Link>
+                            <Button size="icon" variant="ghost" onClick={() => handleDelete(resource.id, resource.url)} className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950" title="Supprimer">
+                            <Trash2 className="w-4 h-4" />
+                            </Button>
+                        </div>
+                        </td>
                     </tr>
-                ))
+                    )
+                })
                 )}
             </tbody>
             </table>
+        </div>
+
+        <div className="p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-lg">
+            <p className="text-sm text-blue-800 dark:text-blue-300">
+            💡 <strong>Astuce :</strong> Quand vous ajoutez un livre avec une version numérique via <strong>/admin/books/new</strong>, 
+            il apparaît automatiquement dans cette liste avec le badge <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 ml-1">📚 Livre</Badge>.
+            </p>
         </div>
         </div>
     )
