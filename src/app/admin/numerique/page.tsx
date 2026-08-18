@@ -64,10 +64,16 @@
         }
     }
 
-    const filteredResources = resources.filter((r) =>
-        r.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r.documents?.title.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+    const filteredResources = resources.filter((r) => {
+        const normalized = searchTerm.trim().toLowerCase()
+        if (!normalized) return true
+
+        const title = r.title?.toLowerCase() ?? ""
+        const documentTitle = r.documents?.title?.toLowerCase() ?? ""
+        const author = r.documents?.author?.toLowerCase() ?? ""
+
+        return title.includes(normalized) || documentTitle.includes(normalized) || author.includes(normalized)
+    })
 
     if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 animate-spin text-amber-500" /></div>
 
@@ -87,7 +93,7 @@
             <CardContent className="p-4">
             <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input placeholder="Rechercher par titre..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
+                <Input placeholder="Rechercher par titre, document ou auteur..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
             </div>
             </CardContent>
         </Card>

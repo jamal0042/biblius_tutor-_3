@@ -26,6 +26,7 @@
     const [auteurs, setAuteurs] = useState<Auteur[]>([])
     const [authorSearch, setAuthorSearch] = useState("")
     const [showAuthorSuggestions, setShowAuthorSuggestions] = useState(false)
+    const [selectedDigitalFile, setSelectedDigitalFile] = useState<File | null>(null)
 
     const [formData, setFormData] = useState({
         title: "",
@@ -58,14 +59,24 @@
         : auteurs.slice(0, 6)
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-        const value = e.target.type === "number" ? parseInt(e.target.value) || 0 : e.target.value
+        const rawValue = e.target.value
+        const value = e.target.type === "number"
+        ? (e.target.name === "total_exemplaires" ? Math.max(1, Number(rawValue) || 1) : Number(rawValue) || 0)
+        : rawValue
         setFormData((prev) => ({ ...prev, [e.target.name]: value }))
     }
 
     const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData((prev) => ({ ...prev, has_digital: e.target.checked }))
         if (!e.target.checked) {
+        setSelectedDigitalFile(null)
         setFormData((prev) => ({ ...prev, digital_url: "" }))
+        }
+    }
+
+    const handleDigitalFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+        setSelectedDigitalFile(e.target.files[0])
         }
     }
 
@@ -150,6 +161,24 @@
             ? "physique"
             : "numerique"
 
+        let uploadedDigitalUrl = formData.digital_url || null
+
+        if (formData.has_digital && selectedDigitalFile) {
+            const fileExt = selectedDigitalFile.name.split(".").pop() ?? "pdf"
+            const fileName = `${crypto.randomUUID()}.${fileExt}`
+            const { error: uploadError } = await supabase.storage
+            .from("digital-resources")
+            .upload(fileName, selectedDigitalFile)
+
+            if (uploadError) throw uploadError
+
+            const { data: publicData } = supabase.storage
+            .from("digital-resources")
+            .getPublicUrl(fileName)
+
+            uploadedDigitalUrl = publicData.publicUrl
+        }
+
         const { data: doc, error: dbError } = await supabase
             .from("documents")
             .insert({
@@ -163,18 +192,32 @@
             pages: parseInt(formData.pages) || null,
             description: formData.description || null,
             format: format,
-            digital_url: formData.has_digital ? formData.digital_url : null,
-            file_path: formData.has_digital ? formData.digital_url : null,
+            digital_url: formData.has_digital ? (uploadedDigitalUrl || formData.digital_url || null) : null,
+            file_path: formData.has_digital ? (uploadedDigitalUrl || formData.digital_url || null) : null,
             total_acces_numeriques: formData.has_digital ? 1 : 0,
             acces_numeriques_disponibles: formData.has_digital ? 1 : 0,
-            total_exemplaires: 0,
-            exemplaires_disponibles: 0,
+            total_exemplaires: formData.total_exemplaires,
+            exemplaires_disponibles: formData.total_exemplaires,
             })
             .select()
             .single()
 
         if (dbError) throw dbError
         if (!doc) throw new Error("Document non créé")
+
+        if (formData.has_digital && uploadedDigitalUrl) {
+            const { error: digitalError } = await supabase.from("digital_resources").insert({
+            title: formData.title,
+            description: formData.description || null,
+            url: uploadedDigitalUrl,
+            type: selectedDigitalFile ? (selectedDigitalFile.name.split(".").pop() ?? "pdf") : (formData.type === "book" ? "pdf" : formData.type),
+            category: formData.type === "book" ? "book" : "projet_tutore",
+            access_level: "all",
+            document_id: doc.id,
+            })
+
+            if (digitalError) throw new Error(`Document créé, mais l'upload numérique n'a pas pu être ajouté au catalogue : ${digitalError.message}`)
+        }
 
         if (hasPhysical) {
             const exemplaires = Array.from({ length: formData.total_exemplaires }, (_, i) => ({
@@ -397,13 +440,34 @@
                 <Label htmlFor="has_digital">Ce document a une version numérique</Label>
                 </div>
                 {formData.has_digital && (
-                <Input
-                    id="digital_url"
-                    name="digital_url"
-                    value={formData.digital_url}
-                    onChange={handleChange}
-                    placeholder="/documents/fichier.pdf ou https://..."
-                />
+                <div className="space-y-4">
+                    <div className="space-y-2">
+                    <Label htmlFor="digital_file">Fichier numérique depuis votre PC</Label>
+                    <Input
+                        id="digital_file"
+                        type="file"
+                        accept=".pdf,.epub,.mp4,.mp3,.doc,.docx,.ppt,.pptx"
+                        onChange={handleDigitalFileChange}
+                        className="cursor-pointer"
+                    />
+                    {selectedDigitalFile && (
+                        <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                        {selectedDigitalFile.name}
+                        </p>
+                    )}
+                    </div>
+
+                    <div className="space-y-2">
+                    <Label htmlFor="digital_url">Lien externe (optionnel)</Label>
+                    <Input
+                        id="digital_url"
+                        name="digital_url"
+                        value={formData.digital_url}
+                        onChange={handleChange}
+                        placeholder="https://example.com/document.pdf"
+                    />
+                    </div>
+                </div>
                 )}
             </CardContent>
             </Card>

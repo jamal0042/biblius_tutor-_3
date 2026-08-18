@@ -1,161 +1,194 @@
-    import { BookOpen, Clock, AlertCircle, CheckCircle, Calendar, Plus } from "lucide-react"
+    "use client"
+
+    import { useState } from "react"
+    import { useRouter } from "next/navigation"
+    import { createClient } from "@/lib/supabase/client"
     import { Button } from "@/components/ui/button"
-    import { Badge } from "@/components/ui/badge"
     import { Card, CardContent } from "@/components/ui/card"
-    import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-    import Link from "next/link"
-    import { createServerSupabaseClient, getCurrentMember } from "@/lib/supabase/server"
-    import { redirect } from "next/navigation"
+    import { Input } from "@/components/ui/input"
+    import { Label } from "@/components/ui/label"
+    import { Textarea } from "@/components/ui/textarea"
+    import { FileText, Upload, X, ArrowRight } from "lucide-react"
 
-    interface PretDocument {
-    id: string
-    title: string
-    author: string
+    export default function EmpruntsPage() {
+    const router = useRouter()
+    const supabase = createClient()
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+    const [success, setSuccess] = useState(false)
+    const [selectedFile, setSelectedFile] = useState<File | null>(null)
+
+    const [formData, setFormData] = useState({
+        title: "",
+        description: "",
+        type: "pdf",
+        category: "projet_tutore",
+        access_level: "all",
+    })
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }))
     }
 
-    interface Pret {
-    id: string
-    loan_date: string
-    due_date: string
-    return_date: string | null
-    status: string
-    documents: PretDocument | null
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+        setSelectedFile(e.target.files[0])
+        }
     }
 
-    export default async function EmpruntsPage() {
-    const member = await getCurrentMember()
-    if (!member) redirect("/login")
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault()
 
-    const supabase = await createServerSupabaseClient()
+        if (!selectedFile) {
+        setError("Veuillez sélectionner un fichier depuis votre disque local.")
+        return
+        }
 
-    const { data: prets } = await supabase
-        .from("prets")
-        .select(`
-        id,
-        loan_date,
-        due_date,
-        return_date,
-        status,
-        documents (
-            id,
-            title,
-            author
-        )
-        `)
-        .eq("member_id", member.id)
-        .order("loan_date", { ascending: false })
+        setLoading(true)
+        setError(null)
+        setSuccess(false)
 
-    const typedPrets = (prets as unknown as Pret[]) || []
-    const currentLoans = typedPrets.filter((p) => p.status === "active" || p.status === "overdue")
-    const historyLoans = typedPrets.filter((p) => p.status === "returned")
+        try {
+        const fileExt = selectedFile.name.split(".").pop() ?? "pdf"
+        const fileName = `${crypto.randomUUID()}.${fileExt}`
+
+        const { error: uploadError } = await supabase.storage
+            .from("digital-resources")
+            .upload(fileName, selectedFile)
+
+        if (uploadError) throw uploadError
+
+        const { data: publicData } = supabase.storage
+            .from("digital-resources")
+            .getPublicUrl(fileName)
+
+        const { error: dbError } = await supabase.from("digital_resources").insert({
+            title: formData.title || selectedFile.name,
+            description: formData.description,
+            url: publicData.publicUrl,
+            type: formData.type,
+            category: formData.category,
+            access_level: formData.access_level,
+            document_id: null,
+        })
+
+        if (dbError) throw dbError
+
+        setSuccess(true)
+        setTimeout(() => router.push("/dashboard/numerique"), 1200)
+        } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Erreur lors de l'ajout de la ressource numérique."
+        setError(message)
+        setLoading(false)
+        }
+    }
 
     return (
         <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Mes Emprunts</h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1">Gérez vos livres en cours et consultez votre historique.</p>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Ressources numériques</h1>
+            <p className="text-slate-500 dark:text-slate-400 mt-1">Ajoutez un document depuis votre disque local et il est automatiquement visible dans le catalogue numérique.</p>
             </div>
-            <Link href="/catalogue">
-            <Button className="bg-amber-500 hover:bg-amber-600 text-white">
-                <Plus className="w-4 h-4 mr-2" />
-                Emprunter un livre
+            <Button type="button" variant="outline" onClick={() => router.push("/dashboard/numerique")} className="border-amber-500 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-500/10">
+                Voir le catalogue
+                <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
-            </Link>
         </div>
 
-        <Tabs defaultValue="current" className="w-full">
-            <TabsList className="grid w-full max-w-md grid-cols-2 mb-6 bg-slate-100 dark:bg-slate-900">
-            <TabsTrigger value="current" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-amber-600 dark:data-[state=active]:text-amber-500">
-                En cours ({currentLoans.length})
-            </TabsTrigger>
-            <TabsTrigger value="history" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-amber-600 dark:data-[state=active]:text-amber-500">
-                Historique ({historyLoans.length})
-            </TabsTrigger>
-            </TabsList>
+        {error && (
+            <Card className="border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/20">
+            <CardContent className="p-4 text-sm text-red-700 dark:text-red-400">{error}</CardContent>
+            </Card>
+        )}
 
-            <TabsContent value="current" className="space-y-4">
-            {currentLoans.length === 0 ? (
-                <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-                <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                    <BookOpen className="w-12 h-12 text-slate-300 dark:text-slate-600 mb-4" />
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Aucun emprunt en cours</h3>
-                    <p className="text-slate-500 dark:text-slate-400 mt-1 mb-4">Vous n&apos;avez pas de livre en ce moment.</p>
-                    <Link href="/catalogue">
-                    <Button variant="outline" className="border-amber-500 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-500/10">
-                        Parcourir le catalogue
+        {success && (
+            <Card className="border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/20">
+            <CardContent className="p-4 text-sm text-emerald-700 dark:text-emerald-400">Ressource ajoutée avec succès. Redirection vers le catalogue...</CardContent>
+            </Card>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+            <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+            <CardContent className="p-6 space-y-6">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                <FileText className="w-5 h-5 text-amber-500" />
+                Ajouter un document numérique
+                </h2>
+
+                <div className="space-y-2">
+                <Label htmlFor="title">Titre</Label>
+                <Input id="title" name="title" value={formData.title} onChange={handleChange} placeholder="Ex : Rapport de projet tutoré" required />
+                </div>
+
+                <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea id="description" name="description" rows={4} value={formData.description} onChange={handleChange} placeholder="Courte description de la ressource..." />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="type">Type de fichier</Label>
+                    <select id="type" name="type" value={formData.type} onChange={handleChange} className="flex h-10 w-full rounded-md border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm">
+                    <option value="pdf">PDF</option>
+                    <option value="epub">EPUB</option>
+                    <option value="video">Vidéo</option>
+                    <option value="audio">Audio</option>
+                    <option value="document">Document</option>
+                    <option value="other">Autre</option>
+                    </select>
+                </div>
+
+                <div className="space-y-2">
+                    <Label htmlFor="category">Catégorie</Label>
+                    <select id="category" name="category" value={formData.category} onChange={handleChange} className="flex h-10 w-full rounded-md border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm">
+                    <option value="projet_tutore">Projet tutoré</option>
+                    <option value="article">Article scientifique</option>
+                    <option value="thesis">Mémoire / Thèse</option>
+                    <option value="book">Livre numérique</option>
+                    <option value="course">Cours</option>
+                    <option value="other">Autre</option>
+                    </select>
+                </div>
+                </div>
+
+                <div className="space-y-2">
+                <Label htmlFor="access_level">Accès</Label>
+                <select id="access_level" name="access_level" value={formData.access_level} onChange={handleChange} className="flex h-10 w-full rounded-md border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm">
+                    <option value="all">Tous</option>
+                    <option value="student">Étudiants</option>
+                    <option value="staff">Staff</option>
+                </select>
+                </div>
+
+                <div className="space-y-2">
+                <Label htmlFor="file">Fichier local</Label>
+                <div className="flex items-center gap-2">
+                    <Input id="file" type="file" onChange={handleFileChange} accept=".pdf,.epub,.mp4,.mp3,.doc,.docx,.ppt,.pptx" className="cursor-pointer" required />
+                    {selectedFile && (
+                    <Button type="button" variant="ghost" size="icon" onClick={() => setSelectedFile(null)} className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950">
+                        <X className="w-4 h-4" />
                     </Button>
-                    </Link>
-                </CardContent>
-                </Card>
-            ) : (
-                currentLoans.map((loan) => {
-                const isOverdue = loan.status === "overdue" || new Date(loan.due_date) < new Date()
-                return (
-                    <Card key={loan.id} className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-amber-500/30 transition-colors">
-                    <CardContent className="p-4 sm:p-6">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div className="flex items-start gap-4">
-                            <div className="w-12 h-16 bg-slate-100 dark:bg-slate-800 rounded flex items-center justify-center shrink-0">
-                            <BookOpen className="w-6 h-6 text-slate-400" />
-                            </div>
-                            <div>
-                            <h3 className="font-semibold text-slate-900 dark:text-white text-lg">{loan.documents?.title || "Titre inconnu"}</h3>
-                            <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">{loan.documents?.author || "Auteur inconnu"}</p>
-                            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
-                                <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> Prêté le : {new Date(loan.loan_date).toLocaleDateString("fr-FR")}</span>
-                                <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> Retour le : {new Date(loan.due_date).toLocaleDateString("fr-FR")}</span>
-                            </div>
-                            </div>
-                        </div>
-                        <div className="flex flex-col sm:items-end gap-3 sm:min-w-[150px]">
-                            <Badge className={isOverdue ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400"}>
-                            {isOverdue ? <><AlertCircle className="w-3 h-3 mr-1" /> En retard</> : <><CheckCircle className="w-3 h-3 mr-1" /> À temps</>}
-                            </Badge>
-                            {isOverdue && <Button size="sm" className="w-full sm:w-auto bg-red-500 hover:bg-red-600 text-white">Régulariser</Button>}
-                        </div>
-                        </div>
-                    </CardContent>
-                    </Card>
-                )
-                })
-            )}
-            </TabsContent>
+                    )}
+                </div>
+                {selectedFile && (
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-medium">
+                    <FileText className="w-3 h-3" />
+                    {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+                    </p>
+                )}
+                </div>
+            </CardContent>
+            </Card>
 
-            <TabsContent value="history" className="space-y-4">
-            {historyLoans.length === 0 ? (
-                <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-                <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                    <p className="text-slate-500 dark:text-slate-400">Votre historique d&apos;emprunt est vide.</p>
-                </CardContent>
-                </Card>
-            ) : (
-                historyLoans.map((loan) => (
-                <Card key={loan.id} className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 opacity-80">
-                    <CardContent className="p-4 sm:p-6">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div className="flex items-start gap-4">
-                        <div className="w-12 h-16 bg-slate-100 dark:bg-slate-800 rounded flex items-center justify-center shrink-0">
-                            <BookOpen className="w-6 h-6 text-slate-400" />
-                        </div>
-                        <div>
-                            <h3 className="font-semibold text-slate-900 dark:text-white">{loan.documents?.title || "Titre inconnu"}</h3>
-                            <p className="text-sm text-slate-500 dark:text-slate-400">{loan.documents?.author || "Auteur inconnu"}</p>
-                            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mt-2">
-                            <span>Du {new Date(loan.loan_date).toLocaleDateString("fr-FR")} au {loan.return_date ? new Date(loan.return_date).toLocaleDateString("fr-FR") : "..."}</span>
-                            </div>
-                        </div>
-                        </div>
-                        <Badge variant="outline" className="border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 w-fit">
-                        <CheckCircle className="w-3 h-3 mr-1" /> Retourné
-                        </Badge>
-                    </div>
-                    </CardContent>
-                </Card>
-                ))
-            )}
-            </TabsContent>
-        </Tabs>
+            <div className="flex justify-end gap-3">
+            <Button type="button" variant="outline" onClick={() => router.push("/dashboard/numerique")}>Annuler</Button>
+            <Button type="submit" disabled={loading || !selectedFile} className="bg-amber-500 hover:bg-amber-600 text-white min-w-[180px]">
+                {loading ? "Ajout en cours..." : "Ajouter au catalogue numérique"}
+                {!loading && <Upload className="w-4 h-4 ml-2" />}
+            </Button>
+            </div>
+        </form>
         </div>
     )
     }

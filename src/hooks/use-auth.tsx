@@ -43,10 +43,16 @@
             .maybeSingle()  // ← changement ici
 
         if (error) {
-            const isMissingProfileError = ['PGRST116', '406', '42P01', '42501'].includes(error.code ?? '')
-            const isMissingTableMessage = /does not exist|not found|profil member|members/i.test(error.message ?? '')
+            const errorCode = typeof error.code === 'string' || typeof error.code === 'number' ? String(error.code) : ''
+            const errorMessage = typeof error.message === 'string' ? error.message : ''
+            const normalizedErrorText = `${errorCode} ${errorMessage}`.toLowerCase()
+            const isEmptyObjectError = typeof error === 'object' && error !== null && Object.keys(error as unknown as Record<string, unknown>).length === 0
 
-            if (!isMissingProfileError && !isMissingTableMessage) {
+            const isMissingProfileError = ['PGRST116', '406', '42P01', '42501'].includes(errorCode)
+            const isMissingTableMessage = /(does not exist|not found|missing.*profile|profil.*member|profile.*member|table.*members|members)/i.test(normalizedErrorText)
+            const isExpectedSilentError = isMissingProfileError || isMissingTableMessage || isEmptyObjectError
+
+            if (!isExpectedSilentError) {
             console.error('Erreur chargement membre:', error)
             }
 
