@@ -32,11 +32,27 @@
         setLoading(true)
         const { data, error } = await supabase
         .from("documents")
-        .select("*")
+        .select("id, title, type, total_exemplaires, exemplaires_disponibles, digital_url, created_at, auteurs(name)")
         .order("created_at", { ascending: false })
 
         if (!error && data) {
-        setBooks(data as Document[])
+        const mappedBooks = (data as Array<Record<string, unknown>>).map((doc) => {
+            const authorRelation = Array.isArray((doc as { auteurs?: unknown }).auteurs)
+            ? (doc as { auteurs?: Array<{ name?: string | null }> }).auteurs?.[0]
+            : (doc as { auteurs?: { name?: string | null } }).auteurs
+
+            return {
+            id: String(doc.id),
+            title: String(doc.title ?? ""),
+            author: String(authorRelation?.name ?? "Auteur inconnu"),
+            type: String(doc.type ?? "book"),
+            total_exemplaires: Number(doc.total_exemplaires ?? 0),
+            exemplaires_disponibles: Number(doc.exemplaires_disponibles ?? 0),
+            digital_url: (doc.digital_url as string | null) ?? null,
+            created_at: String(doc.created_at ?? "")
+            } satisfies Document
+        })
+        setBooks(mappedBooks)
         }
         setLoading(false)
     }, [supabase])
@@ -45,10 +61,15 @@
         fetchBooks()
     }, [fetchBooks])
 
-    const filteredBooks = books.filter((book) =>
-        book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        book.author.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+    const filteredBooks = books.filter((book) => {
+        const title = (book.title ?? "").toLowerCase()
+        const author = (book.author ?? "").toLowerCase()
+        const term = searchTerm.trim().toLowerCase()
+
+        if (!term) return true
+
+        return title.includes(term) || author.includes(term)
+    })
 
     const getTypeLabel = (type: string) => {
         switch (type) {

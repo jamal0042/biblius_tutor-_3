@@ -1,28 +1,166 @@
-    import { getCurrentMember } from "@/lib/supabase/server"
-    import { redirect } from "next/navigation"
-    import { isStaff, ROLE_LABELS, STATUS_LABELS, STATUS_COLORS, type Member } from "@/lib/roles"
-    import { createServerSupabaseClient } from "@/lib/supabase/server"
-    import { Users, UserCheck, Clock, UserPlus, Phone, Hash } from "lucide-react"
+    "use client"
+
+    import { useCallback, useEffect, useState } from "react"
+    import { createClient } from "@/lib/supabase/client"
+    import { ROLE_LABELS, STATUS_LABELS, STATUS_COLORS, type Member, type Role, type MemberStatus } from "@/lib/roles"
+    import { Users, UserCheck, Clock, UserPlus, Phone, Hash, Pencil, Trash2, Save, PlusCircle } from "lucide-react"
     import { Card, CardContent } from "@/components/ui/card"
     import { Badge } from "@/components/ui/badge"
     import { Button } from "@/components/ui/button"
+    import { Input } from "@/components/ui/input"
     import Link from "next/link"
 
-    export default async function AdminMembersOnlinePage() {
-    const member = await getCurrentMember()
-
-    if (!member || !isStaff(member.role)) {
-        redirect("/dashboard")
+    const emptyForm = {
+    first_name: "",
+    last_name: "",
+    email: "",
+    phone: "",
+    matricule: "",
+    department: "",
+    role: "student" as Role,
+    status: "active" as MemberStatus,
     }
 
-    const supabase = await createServerSupabaseClient()
-    
-    const { data: members } = await supabase
+    export default function AdminMembersOnlinePage() {
+    const supabase = createClient()
+    const [members, setMembers] = useState<Member[]>([])
+    const [loading, setLoading] = useState(true)
+    const [editingMember, setEditingMember] = useState<Member | null>(null)
+    const [showCreateForm, setShowCreateForm] = useState(false)
+    const [formData, setFormData] = useState(emptyForm)
+
+    const fetchMembers = useCallback(async () => {
+        setLoading(true)
+        const { data, error } = await supabase
         .from("members")
         .select("*")
         .order("created_at", { ascending: false })
 
-    const typedMembers = members as Member[] | null
+        if (!error && data) {
+        setMembers(data as Member[])
+        }
+        setLoading(false)
+    }, [supabase])
+
+    useEffect(() => {
+        const timeoutId = window.setTimeout(() => {
+        void fetchMembers()
+        }, 0)
+
+        return () => window.clearTimeout(timeoutId)
+    }, [fetchMembers])
+
+    const handleDelete = async (memberId: string) => {
+        if (!confirm("Voulez-vous vraiment supprimer ce membre ?")) return
+
+        const { error } = await supabase.from("members").delete().eq("id", memberId)
+        if (!error) {
+        setMembers((prev) => prev.filter((member) => member.id !== memberId))
+        }
+    }
+
+    const startEdit = (member: Member) => {
+        setEditingMember(member)
+        setFormData({
+        first_name: member.first_name,
+        last_name: member.last_name,
+        email: member.email,
+        phone: member.phone ?? "",
+        matricule: member.matricule ?? "",
+        department: member.department ?? "",
+        role: member.role,
+        status: member.status,
+        })
+    }
+
+    const handleSave = async () => {
+        if (!editingMember) return
+
+        const { error } = await supabase
+        .from("members")
+        .update({
+            first_name: formData.first_name,
+            last_name: formData.last_name,
+            email: formData.email,
+            phone: formData.phone || null,
+            matricule: formData.matricule || null,
+            department: formData.department || null,
+            role: formData.role,
+            status: formData.status,
+            updated_at: new Date().toISOString(),
+        })
+        .eq("id", editingMember.id)
+
+        if (!error) {
+        setMembers((prev) => prev.map((member) =>
+            member.id === editingMember.id
+            ? { ...member, ...formData, phone: formData.phone || undefined, matricule: formData.matricule || undefined, department: formData.department || undefined }
+            : member
+        ))
+        setEditingMember(null)
+        setFormData(emptyForm)
+        }
+    }
+
+    const handleCreateMember = async () => {
+        if (!formData.first_name || !formData.last_name || !formData.email) return
+
+        const password = Math.random().toString(36).slice(2, 10) + "A!"
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password,
+        options: { data: { first_name: formData.first_name, last_name: formData.last_name } },
+        })
+
+        if (authError) {
+        alert(authError.message)
+        return
+        }
+
+        const memberId = authData.user?.id ?? crypto.randomUUID()
+        const { error } = await supabase.from("members").insert({
+        id: memberId,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        email: formData.email,
+        phone: formData.phone || null,
+        matricule: formData.matricule || null,
+        department: formData.department || null,
+        role: formData.role,
+        status: formData.status,
+        max_loans: formData.role === "teacher" ? 10 : 5,
+        max_loans_duration: formData.role === "teacher" ? 30 : 15,
+        max_digital_loans: 3,
+        email_notifications: true,
+        sms_notifications: false,
+        })
+
+        if (error) {
+        alert(error.message)
+        return
+        }
+
+        setMembers((prev) => [{
+        id: memberId,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        email: formData.email,
+        phone: formData.phone || undefined,
+        matricule: formData.matricule || undefined,
+        department: formData.department || undefined,
+        role: formData.role,
+        status: formData.status,
+        max_loans: formData.role === "teacher" ? 10 : 5,
+        max_loans_duration: formData.role === "teacher" ? 30 : 15,
+        max_digital_loans: 3,
+        email_notifications: true,
+        sms_notifications: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        }, ...prev])
+        setShowCreateForm(false)
+        setFormData(emptyForm)
+    }
 
     return (
         <div className="space-y-6">
@@ -30,16 +168,82 @@
             <div>
             <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Membres de la bibliothèque</h1>
             <p className="text-slate-500 dark:text-slate-400 mt-1">
-                Liste complète des membres inscrits ({typedMembers?.length || 0} au total)
+                Liste complète des membres inscrits ({members.length} au total)
             </p>
             </div>
+            <div className="flex gap-3">
+            <Button onClick={() => setShowCreateForm((prev) => !prev)} className="bg-amber-500 hover:bg-amber-600 text-white">
+                <PlusCircle className="w-4 h-4 mr-2" />
+                Ajouter un membre
+            </Button>
             <Link href="/admin/membres/invitations">
-            <Button className="bg-amber-500 hover:bg-amber-600 text-white">
+                <Button variant="outline" className="border-slate-200 dark:border-slate-700">
                 <UserPlus className="w-4 h-4 mr-2" />
                 Inviter un membre
-            </Button>
+                </Button>
             </Link>
+            </div>
         </div>
+
+        {showCreateForm && (
+            <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+            <CardContent className="p-6 space-y-4">
+                <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Ajouter un membre</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input value={formData.first_name} onChange={(e) => setFormData({ ...formData, first_name: e.target.value })} placeholder="Prénom" />
+                <Input value={formData.last_name} onChange={(e) => setFormData({ ...formData, last_name: e.target.value })} placeholder="Nom" />
+                <Input value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="Email" type="email" />
+                <Input value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="Téléphone" />
+                <Input value={formData.matricule} onChange={(e) => setFormData({ ...formData, matricule: e.target.value })} placeholder="Matricule" />
+                <Input value={formData.department} onChange={(e) => setFormData({ ...formData, department: e.target.value })} placeholder="Département" />
+                <select value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value as Role })} className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-800">
+                    {Object.entries(ROLE_LABELS).map(([key, label]) => (
+                    <option key={key} value={key}>{label}</option>
+                    ))}
+                </select>
+                <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value as MemberStatus })} className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-800">
+                    {Object.entries(STATUS_LABELS).map(([key, label]) => (
+                    <option key={key} value={key}>{label}</option>
+                    ))}
+                </select>
+                </div>
+                <div className="flex justify-end gap-3">
+                <Button variant="outline" onClick={() => setShowCreateForm(false)}>Annuler</Button>
+                <Button onClick={handleCreateMember} className="bg-amber-500 hover:bg-amber-600 text-white">Créer le membre</Button>
+                </div>
+            </CardContent>
+            </Card>
+        )}
+
+        {editingMember && (
+            <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+            <CardContent className="p-6 space-y-4">
+                <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Modifier le membre</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input value={formData.first_name} onChange={(e) => setFormData({ ...formData, first_name: e.target.value })} placeholder="Prénom" />
+                <Input value={formData.last_name} onChange={(e) => setFormData({ ...formData, last_name: e.target.value })} placeholder="Nom" />
+                <Input value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="Email" />
+                <Input value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="Téléphone" />
+                <Input value={formData.matricule} onChange={(e) => setFormData({ ...formData, matricule: e.target.value })} placeholder="Matricule" />
+                <Input value={formData.department} onChange={(e) => setFormData({ ...formData, department: e.target.value })} placeholder="Département" />
+                <select value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value as Role })} className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-800">
+                    {Object.entries(ROLE_LABELS).map(([key, label]) => (
+                    <option key={key} value={key}>{label}</option>
+                    ))}
+                </select>
+                <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value as MemberStatus })} className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-800">
+                    {Object.entries(STATUS_LABELS).map(([key, label]) => (
+                    <option key={key} value={key}>{label}</option>
+                    ))}
+                </select>
+                </div>
+                <div className="flex justify-end gap-3">
+                <Button variant="outline" onClick={() => setEditingMember(null)}>Annuler</Button>
+                <Button onClick={handleSave} className="bg-amber-500 hover:bg-amber-600 text-white"><Save className="w-4 h-4 mr-2" /> Enregistrer</Button>
+                </div>
+            </CardContent>
+            </Card>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
@@ -50,7 +254,7 @@
                 <div>
                 <p className="text-sm text-slate-500 dark:text-slate-400">Membres actifs</p>
                 <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                    {typedMembers?.filter(m => m.status === 'active').length || 0}
+                    {members.filter((m) => m.status === "active").length}
                 </p>
                 </div>
             </CardContent>
@@ -64,7 +268,7 @@
                 <div>
                 <p className="text-sm text-slate-500 dark:text-slate-400">En attente</p>
                 <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                    {typedMembers?.filter(m => m.status === 'pending').length || 0}
+                    {members.filter((m) => m.status === "pending").length}
                 </p>
                 </div>
             </CardContent>
@@ -77,16 +281,17 @@
                 </div>
                 <div>
                 <p className="text-sm text-slate-500 dark:text-slate-400">Total</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                    {typedMembers?.length || 0}
-                </p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white">{members.length}</p>
                 </div>
             </CardContent>
             </Card>
         </div>
 
+        {loading ? (
+            <div className="flex justify-center py-12"><div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-amber-500" /></div>
+        ) : (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg overflow-x-auto">
-            <table className="w-full min-w-[1000px]">
+            <table className="w-full min-w-[1100px]">
             <thead className="bg-slate-50 dark:bg-slate-800">
                 <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Nom</th>
@@ -95,10 +300,11 @@
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Matricule</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Rôle</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Statut</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
                 </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                {typedMembers?.map((m) => (
+                {members.map((m) => (
                 <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
                     <td className="px-6 py-4 text-sm font-medium text-slate-900 dark:text-white">
                     {m.first_name} {m.last_name}
@@ -125,11 +331,22 @@
                         {STATUS_LABELS[m.status]}
                     </Badge>
                     </td>
+                    <td className="px-6 py-4 text-right">
+                    <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="outline" onClick={() => startEdit(m)}>
+                        <Pencil className="w-4 h-4 mr-1" /> Modifier
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={() => handleDelete(m.id)}>
+                        <Trash2 className="w-4 h-4 mr-1" /> Supprimer
+                        </Button>
+                    </div>
+                    </td>
                 </tr>
                 ))}
             </tbody>
             </table>
         </div>
+        )}
         </div>
     )
     }

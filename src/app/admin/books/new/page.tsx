@@ -24,8 +24,8 @@
     const [success, setSuccess] = useState(false)
 
     const [auteurs, setAuteurs] = useState<Auteur[]>([])
-    const [newAuteurName, setNewAuteurName] = useState("")
-    const [showNewAuteur, setShowNewAuteur] = useState(false)
+    const [authorSearch, setAuthorSearch] = useState("")
+    const [showAuthorSuggestions, setShowAuthorSuggestions] = useState(false)
 
     const [formData, setFormData] = useState({
         title: "",
@@ -39,10 +39,9 @@
         description: "",
         total_exemplaires: 1,
         digital_url: "",
-        has_digital: false
+        has_digital: false,
     })
 
-    // Charger la liste des auteurs
     useEffect(() => {
         const loadAuteurs = async () => {
         const { data } = await supabase
@@ -54,54 +53,72 @@
         loadAuteurs()
     }, [supabase])
 
+    const filteredAuteurs = authorSearch.trim()
+        ? auteurs.filter((a) => a.name.toLowerCase().includes(authorSearch.trim().toLowerCase()))
+        : auteurs.slice(0, 6)
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const value = e.target.type === "number" ? parseInt(e.target.value) || 0 : e.target.value
-        setFormData({ ...formData, [e.target.name]: value })
+        setFormData((prev) => ({ ...prev, [e.target.name]: value }))
     }
 
     const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData({ ...formData, has_digital: e.target.checked })
+        setFormData((prev) => ({ ...prev, has_digital: e.target.checked }))
         if (!e.target.checked) {
-        setFormData({ ...formData, digital_url: "" })
+        setFormData((prev) => ({ ...prev, digital_url: "" }))
         }
     }
 
-    // Créer un nouvel auteur à la volée
-    const handleCreateAuteur = async () => {
-        if (!newAuteurName.trim()) return
+    const ensureAuthor = async (name: string) => {
+        const trimmedName = name.trim()
+        if (!trimmedName) return null
+
+        const existing = auteurs.find((a) => a.name.toLowerCase() === trimmedName.toLowerCase())
+        if (existing) {
+        setFormData((prev) => ({ ...prev, author_id: existing.id }))
+        setAuthorSearch(existing.name)
+        setShowAuthorSuggestions(false)
+        return existing.id
+        }
 
         const { data, error } = await supabase
         .from("auteurs")
-        .insert({ name: newAuteurName.trim() })
-        .select()
+        .insert({ name: trimmedName })
+        .select("id, name")
         .single()
 
-        if (error) {
-        // Si l'auteur existe déjà, le récupérer
-        if (error.code === "23505") {
-            const { data: existing } = await supabase
+        if (error && error.code === "23505") {
+        const { data: duplicated } = await supabase
             .from("auteurs")
-            .select("id")
-            .eq("name", newAuteurName.trim())
-            .single()
-            if (existing) {
-            setFormData({ ...formData, author_id: existing.id })
-            setNewAuteurName("")
-            setShowNewAuteur(false)
-            alert("Auteur existant sélectionné.")
-            }
-        } else {
-            alert("Erreur : " + error.message)
+            .select("id, name")
+            .eq("name", trimmedName)
+            .maybeSingle()
+
+        if (duplicated) {
+            setFormData((prev) => ({ ...prev, author_id: duplicated.id }))
+            setAuthorSearch(duplicated.name)
+            setShowAuthorSuggestions(false)
+            return duplicated.id
         }
-        return
         }
 
+        if (error) throw new Error(error.message)
+
         if (data) {
-        setAuteurs([...auteurs, data].sort((a, b) => a.name.localeCompare(b.name)))
-        setFormData({ ...formData, author_id: data.id })
-        setNewAuteurName("")
-        setShowNewAuteur(false)
+        setAuteurs((prev) => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)))
+        setFormData((prev) => ({ ...prev, author_id: data.id }))
+        setAuthorSearch(data.name)
+        setShowAuthorSuggestions(false)
+        return data.id
         }
+
+        return null
+    }
+
+    const selectAuthor = (author: Auteur) => {
+        setFormData((prev) => ({ ...prev, author_id: author.id }))
+        setAuthorSearch(author.name)
+        setShowAuthorSuggestions(false)
     }
 
     const generateBarcode = (index: number) => {
@@ -117,7 +134,12 @@
         setSuccess(false)
 
         try {
-        if (!formData.author_id) {
+        let resolvedAuthorId = formData.author_id
+        if (!resolvedAuthorId && authorSearch.trim()) {
+            resolvedAuthorId = await ensureAuthor(authorSearch)
+        }
+
+        if (!resolvedAuthorId) {
             throw new Error("Veuillez sélectionner ou créer un auteur")
         }
 
@@ -128,12 +150,11 @@
             ? "physique"
             : "numerique"
 
-        // 1. Créer la notice
         const { data: doc, error: dbError } = await supabase
             .from("documents")
             .insert({
             title: formData.title,
-            author_id: formData.author_id, // 🌟 NOUVEAU : ID au lieu de texte
+            author_id: resolvedAuthorId,
             isbn: formData.isbn || null,
             publisher: formData.publisher || null,
             year: parseInt(formData.year) || null,
@@ -147,7 +168,7 @@
             total_acces_numeriques: formData.has_digital ? 1 : 0,
             acces_numeriques_disponibles: formData.has_digital ? 1 : 0,
             total_exemplaires: 0,
-            exemplaires_disponibles: 0
+            exemplaires_disponibles: 0,
             })
             .select()
             .single()
@@ -155,14 +176,12 @@
         if (dbError) throw dbError
         if (!doc) throw new Error("Document non créé")
 
-        // 2. Créer les exemplaires
         if (hasPhysical) {
             const exemplaires = Array.from({ length: formData.total_exemplaires }, (_, i) => ({
             document_id: doc.id,
             barcode: generateBarcode(i),
-            inventory_code: `INV-${doc.id.slice(0, 8)}-${i + 1}`,
             status: "available",
-            acquisition_date: new Date().toISOString().split("T")[0]
+            acquisition_date: new Date().toISOString().split("T")[0],
             }))
 
             const { error: exError } = await supabase.from("exemplaires").insert(exemplaires)
@@ -231,49 +250,53 @@
                     />
                 </div>
 
-                {/* 🌟 NOUVEAU : Sélection ou création d'auteur */}
                 <div className="space-y-2">
-                    <Label htmlFor="author_id">Auteur *</Label>
-                    {!showNewAuteur ? (
-                    <div className="flex gap-2">
-                        <select
-                        id="author_id"
-                        name="author_id"
-                        value={formData.author_id}
-                        onChange={handleChange}
-                        className="flex-1 h-10 px-3 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+                    <Label htmlFor="author_search">Auteur *</Label>
+                    <div className="relative">
+                    <Input
+                        id="author_search"
+                        value={authorSearch}
+                        onChange={(e) => {
+                        setAuthorSearch(e.target.value)
+                        setShowAuthorSuggestions(true)
+                        if (!e.target.value.trim()) {
+                            setFormData((prev) => ({ ...prev, author_id: "" }))
+                        }
+                        }}
+                        onFocus={() => setShowAuthorSuggestions(true)}
+                        placeholder="Tapez le nom de l'auteur..."
                         required
-                        >
-                        <option value="">-- Sélectionner un auteur --</option>
-                        {auteurs.map((a) => (
-                            <option key={a.id} value={a.id}>
-                            {a.name}
-                            </option>
+                    />
+                    {showAuthorSuggestions && authorSearch.trim() && filteredAuteurs.length > 0 && (
+                        <div className="absolute z-10 mt-2 w-full rounded-md border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                        {filteredAuteurs.map((author) => (
+                            <button
+                            key={author.id}
+                            type="button"
+                            className="flex w-full items-center justify-between rounded px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                            onClick={() => selectAuthor(author)}
+                            >
+                            <span>{author.name}</span>
+                            </button>
                         ))}
-                        </select>
+                        </div>
+                    )}
+                    </div>
+                    {authorSearch.trim() && !formData.author_id && (
+                    <div className="flex items-center gap-2 pt-1">
                         <Button
                         type="button"
                         variant="outline"
-                        onClick={() => setShowNewAuteur(true)}
-                        size="icon"
-                        title="Créer un nouvel auteur"
+                        onClick={async () => {
+                            try {
+                            await ensureAuthor(authorSearch)
+                            } catch (err) {
+                            setError(err instanceof Error ? err.message : "Erreur lors de la création de l’auteur")
+                            }
+                        }}
                         >
-                        <Plus className="w-4 h-4" />
-                        </Button>
-                    </div>
-                    ) : (
-                    <div className="flex gap-2">
-                        <Input
-                        value={newAuteurName}
-                        onChange={(e) => setNewAuteurName(e.target.value)}
-                        placeholder="Nom du nouvel auteur"
-                        autoFocus
-                        />
-                        <Button type="button" onClick={handleCreateAuteur}>
-                        Créer
-                        </Button>
-                        <Button type="button" variant="outline" onClick={() => setShowNewAuteur(false)}>
-                        Annuler
+                        <Plus className="w-4 h-4 mr-2" />
+                        Créer cet auteur
                         </Button>
                     </div>
                     )}
