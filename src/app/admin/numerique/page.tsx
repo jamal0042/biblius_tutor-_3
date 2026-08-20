@@ -32,6 +32,9 @@
     type: string
     category: string
     access_level: string
+    downloadable: boolean
+    author_id: string | null
+    auteur_direct: AuteurData | AuteurData[] | null
     created_at: string
     document_id: string | null
     documents: MaybeArray<DocumentData>
@@ -47,6 +50,8 @@
     // Récupère le nom de l'auteur (gère objet ET tableau)
     function getAuthorName(resource: DigitalResource): string {
     const doc = toSingle(resource.documents)
+    const directAuthor = toSingle(resource.auteur_direct)
+    if (directAuthor?.name) return directAuthor.name
     if (!doc) return "Auteur inconnu"
     const auteur = toSingle(doc.auteurs)
     return auteur?.name || "Auteur inconnu"
@@ -67,27 +72,34 @@
     const fetchResources = useCallback(async () => {
     setLoading(true)
     try {
-        const { data, error, status, statusText } = await supabase
-        .from("digital_resources")
-        .select(`
+        const selectWithAuthor = `
             *,
             documents (
             title,
-            author_id,
             auteurs (id, name)
-            )
-        `)
+            ),
+            auteur_direct:auteurs!digital_resources_author_id_fkey (id, name)
+        `
+        const selectWithoutAuthor = `*, documents (title, auteurs (id, name))`
+
+        let { data, error } = await supabase
+        .from("digital_resources")
+        .select(selectWithAuthor)
         .order("created_at", { ascending: false })
 
         if (error) {
-        console.error(" Erreur Supabase détaillée:", {
-            message: error.message,
+        console.error("Erreur Supabase détaillée:", error.message, {
             code: error.code,
             details: error.details,
             hint: error.hint,
-            status,
-            statusText,
         })
+        // Permet à l'administration de rester accessible avant l'application de la migration.
+        const fallback = await supabase
+            .from("digital_resources")
+            .select(selectWithoutAuthor)
+            .order("created_at", { ascending: false })
+        data = fallback.data
+        error = fallback.error
         }
         
         console.log(" Data reçue:", data)
@@ -170,12 +182,13 @@
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Type</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Source</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Accès</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Téléchargement</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
                 </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                 {filteredResources.length === 0 ? (
-                <tr><td colSpan={6} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">Aucune ressource numérique trouvée.</td></tr>
+                <tr><td colSpan={7} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">Aucune ressource numérique trouvée.</td></tr>
                 ) : (
                 filteredResources.map((resource) => {
                     const docTitle = getDocTitle(resource)
@@ -215,6 +228,11 @@
                             : "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400"
                         }>
                             {resource.access_level === "all" ? "Tous" : resource.access_level === "student" ? "Étudiants" : "Staff"}
+                        </Badge>
+                        </td>
+                        <td className="px-6 py-4">
+                        <Badge className={resource.downloadable ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400" : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"}>
+                            {resource.downloadable ? "Autorisé" : "Navigation uniquement"}
                         </Badge>
                         </td>
                         <td className="px-6 py-4 text-right">

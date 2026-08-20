@@ -116,7 +116,7 @@
             <StatCard title="Emprunts en cours" value={activeLoans.length.toString()} icon={BookOpen} color="blue" />
             <StatCard title="En retard" value={overdueLoans.length.toString()} icon={AlertCircle} color="red" />
             <StatCard title="Réservations" value={typedReservations.length.toString()} icon={Calendar} color="amber" />
-            <StatCard title="Amendes impayées" value={`${totalUnpaidFines.toLocaleString()} FCFA`} icon={CheckCircle} color="green" />
+            <StatCard title="Amendes impayées" value={`${totalUnpaidFines.toLocaleString()} FC`} icon={CheckCircle} color="green" />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

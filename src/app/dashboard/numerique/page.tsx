@@ -111,7 +111,7 @@
     const supabase = await createServerSupabaseClient()
 
     // 🌟 Requête corrigée : auteurs(name) au lieu de author
-    const selectClause = `*, documents (title, author_id, auteurs (id, name))`
+    const selectClause = `*, documents (title, auteurs (id, name))`
 
     // 1. Mes publications (si connecté)
     let myResources: DigitalResource[] = []

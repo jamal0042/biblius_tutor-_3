@@ -11,7 +11,7 @@
     import { Card, CardContent } from "@/components/ui/card"
     import Link from "next/link"
 
-    interface DocumentOption { id: string; title: string; author: string }
+    interface DocumentOption { id: string; title: string; auteurs: { name: string }[] | { name: string } | null }
 
     export default function EditDigitalResourcePage() {
     const router = useRouter()
@@ -28,7 +28,7 @@
     const [currentFileName, setCurrentFileName] = useState<string>("")
 
     const [formData, setFormData] = useState({
-        title: "", description: "", url: "", type: "pdf", category: "projet_tutore", access_level: "all", document_id: ""
+        title: "", description: "", url: "", type: "pdf", category: "projet_tutore", access_level: "all", document_id: "", downloadable: true
     })
 
     useEffect(() => {
@@ -41,6 +41,7 @@
             title: resource.title || "", description: resource.description || "", url: resource.url || "",
             type: resource.type || "pdf", category: resource.category || "projet_tutore",
             access_level: resource.access_level || "all", document_id: resource.document_id || ""
+            , downloadable: resource.downloadable ?? true
             })
             // Extraire le nom du fichier de l'URL pour l'affichage
             if (resource.url) setCurrentFileName(resource.url.split('/').pop() || "Fichier actuel")
@@ -59,7 +60,7 @@
     }
 
     const fetchDocuments = async () => {
-        const { data } = await supabase.from("documents").select("id, title, author").order("title")
+        const { data } = await supabase.from("documents").select("id, title, auteurs(name)").order("title")
         if (data) setDocuments(data as DocumentOption[])
     }
 
@@ -97,6 +98,7 @@
             category: formData.category,
             access_level: formData.access_level,
             document_id: formData.document_id || null,
+            downloadable: formData.downloadable,
             updated_at: new Date().toISOString()
         }).eq("id", resourceId)
 
@@ -178,11 +180,16 @@
                 </select>
                 </div>
 
+                <label className="flex items-center gap-3 rounded-md border border-slate-200 p-3 text-sm dark:border-slate-700">
+                <input type="checkbox" name="downloadable" checked={formData.downloadable} onChange={(e) => setFormData((prev) => ({ ...prev, downloadable: e.target.checked }))} className="h-4 w-4 accent-amber-500" />
+                <span><strong className="text-slate-900 dark:text-white">Autoriser le téléchargement</strong><span className="block text-xs text-slate-500">Sinon, la ressource reste consultable dans le navigateur uniquement.</span></span>
+                </label>
+
                 <div className="space-y-2">
                 <Label htmlFor="document_id">Lier à un document du catalogue (optionnel)</Label>
                 <select id="document_id" name="document_id" value={formData.document_id} onChange={handleChange} onFocus={fetchDocuments} className="flex h-10 w-full rounded-md border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm dark:text-white">
                     <option value="">Aucun</option>
-                    {documents.map((doc) => (<option key={doc.id} value={doc.id}>{doc.title} - {doc.author}</option>))}
+                    {documents.map((doc) => (<option key={doc.id} value={doc.id}>{doc.title}</option>))}
                 </select>
                 </div>
             </CardContent>

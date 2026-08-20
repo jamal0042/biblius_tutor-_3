@@ -4,18 +4,14 @@
     import { useState, useEffect, useCallback } from "react"
     import { useRouter, useParams } from "next/navigation"
     import { createClient } from "@/lib/supabase/client"
-    import { Save, Loader2, ArrowLeft, BookOpen, FileText, HardDrive, Plus } from "lucide-react"
+    import { Save, Loader2, ArrowLeft, BookOpen, FileText, HardDrive } from "lucide-react"
     import { Button } from "@/components/ui/button"
     import { Input } from "@/components/ui/input"
     import { Label } from "@/components/ui/label"
     import { Textarea } from "@/components/ui/textarea"
     import { Card, CardContent } from "@/components/ui/card"
     import Link from "next/link"
-
-    interface Auteur {
-    id: string
-    name: string
-    }
+    import { saveDocumentAuthors } from "@/lib/authors"
 
     export default function EditBookPage() {
     const router = useRouter()
@@ -27,13 +23,10 @@
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState(false)
-    const [auteurs, setAuteurs] = useState<Auteur[]>([])
-    const [authorSearch, setAuthorSearch] = useState("")
-    const [showAuthorSuggestions, setShowAuthorSuggestions] = useState(false)
+    const [authorsInput, setAuthorsInput] = useState("")
 
     const [formData, setFormData] = useState({
         title: "",
-        author_id: "",
         isbn: "",
         publisher: "",
         year: "",
@@ -45,56 +38,6 @@
         digital_url: "",
         has_digital: false,
     })
-
-    const filteredAuteurs = authorSearch.trim()
-        ? auteurs.filter((a) => a.name.toLowerCase().includes(authorSearch.trim().toLowerCase()))
-        : auteurs.slice(0, 6)
-
-    const ensureAuthor = useCallback(async (name: string) => {
-        const trimmedName = name.trim()
-        if (!trimmedName) return null
-
-        const existing = auteurs.find((a) => a.name.toLowerCase() === trimmedName.toLowerCase())
-        if (existing) {
-        setFormData((prev) => ({ ...prev, author_id: existing.id }))
-        setAuthorSearch(existing.name)
-        setShowAuthorSuggestions(false)
-        return existing.id
-        }
-
-        const { data, error } = await supabase
-        .from("auteurs")
-        .insert({ name: trimmedName })
-        .select("id, name")
-        .single()
-
-        if (error && error.code === "23505") {
-        const { data: duplicated } = await supabase
-            .from("auteurs")
-            .select("id, name")
-            .eq("name", trimmedName)
-            .maybeSingle()
-
-        if (duplicated) {
-            setFormData((prev) => ({ ...prev, author_id: duplicated.id }))
-            setAuthorSearch(duplicated.name)
-            setShowAuthorSuggestions(false)
-            return duplicated.id
-        }
-        }
-
-        if (error) throw new Error(error.message)
-
-        if (data) {
-        setAuteurs((prev) => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)))
-        setFormData((prev) => ({ ...prev, author_id: data.id }))
-        setAuthorSearch(data.name)
-        setShowAuthorSuggestions(false)
-        return data.id
-        }
-
-        return null
-    }, [auteurs, supabase])
 
     const syncExemplaires = useCallback(async (documentId: string, targetCount: number) => {
         const finalTarget = Math.max(1, Number(targetCount) || 1)
@@ -122,37 +65,31 @@
         }
     }, [supabase])
 
-    const firstAuthorName = (doc: { auteurs?: { name?: string | null }[] | { name?: string | null } | null }) => {
-        if (!doc?.auteurs) return ""
-        if (Array.isArray(doc.auteurs)) return doc.auteurs[0]?.name ?? ""
-        return doc.auteurs.name ?? ""
-    }
-
     const fetchBook = useCallback(async () => {
         setLoading(true)
 
-        const [{ data: authorsData }, { data, error }] = await Promise.all([
-        supabase.from("auteurs").select("id, name").order("name", { ascending: true }),
+        const [{ data, error }, { data: documentAuthors, error: authorsError }] = await Promise.all([
         supabase
             .from("documents")
-            .select("id, title, author_id, isbn, publisher, year, type, language, pages, description, total_exemplaires, digital_url, auteurs (id, name)")
+            .select("id, title, isbn, publisher, year, type, language, pages, description, total_exemplaires, digital_url")
             .eq("id", bookId)
             .single(),
+        supabase.from("document_auteurs").select("author_order, auteurs(name)").eq("document_id", bookId).order("author_order"),
         ])
 
-        setAuteurs((authorsData as Auteur[]) || [])
-
-        if (error || !data) {
+        if (error || authorsError || !data) {
         setError("Document non trouvé.")
         setLoading(false)
         return
         }
 
-        const authorName = firstAuthorName(data)
-        setAuthorSearch(authorName)
+        const authorNames = (documentAuthors || []).map((relation) => {
+            const author = Array.isArray(relation.auteurs) ? relation.auteurs[0] : relation.auteurs
+            return author?.name || ""
+        }).filter(Boolean).join(", ")
+        setAuthorsInput(authorNames)
         setFormData({
         title: data.title || "",
-        author_id: data.author_id || "",
         isbn: data.isbn || "",
         publisher: data.publisher || "",
         year: data.year?.toString() || "",
@@ -192,14 +129,7 @@
         setSuccess(false)
 
         try {
-        let resolvedAuthorId = formData.author_id
-        if (!resolvedAuthorId && authorSearch.trim()) {
-            resolvedAuthorId = await ensureAuthor(authorSearch)
-        }
-
-        if (!resolvedAuthorId) {
-            throw new Error("Veuillez sélectionner ou créer un auteur")
-        }
+        if (!authorsInput.trim()) throw new Error("Veuillez saisir au moins un auteur.")
 
         const safeTotal = Math.max(1, Number(formData.total_exemplaires) || 1)
 
@@ -207,7 +137,6 @@
             .from("documents")
             .update({
             title: formData.title,
-            author_id: resolvedAuthorId,
             isbn: formData.isbn || null,
             publisher: formData.publisher || null,
             year: parseInt(formData.year) || null,
@@ -223,6 +152,10 @@
             .eq("id", bookId)
 
         if (dbError) throw dbError
+
+        const { error: deleteAuthorsError } = await supabase.from("document_auteurs").delete().eq("document_id", bookId)
+        if (deleteAuthorsError) throw deleteAuthorsError
+        await saveDocumentAuthors(bookId, authorsInput)
 
         await syncExemplaires(bookId, safeTotal)
 
@@ -272,59 +205,15 @@
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2"><Label htmlFor="title">Titre du document *</Label><Input id="title" name="title" value={formData.title} onChange={handleChange} required /></div>
                 <div className="space-y-2">
-                    <Label htmlFor="author_search">Auteur *</Label>
-                    <div className="relative">
+                    <Label htmlFor="authors">Auteur(s) *</Label>
                     <Input
-                        id="author_search"
-                        value={authorSearch}
-                        onChange={(e) => {
-                        setAuthorSearch(e.target.value)
-                        setShowAuthorSuggestions(true)
-                        if (!e.target.value.trim()) {
-                            setFormData((prev) => ({ ...prev, author_id: "" }))
-                        }
-                        }}
-                        onFocus={() => setShowAuthorSuggestions(true)}
-                        placeholder="Tapez le nom de l'auteur..."
+                        id="authors"
+                        value={authorsInput}
+                        onChange={(e) => setAuthorsInput(e.target.value)}
+                        placeholder="Victor Hugo, Émile Zola"
                         required
                     />
-                    {showAuthorSuggestions && authorSearch.trim() && filteredAuteurs.length > 0 && (
-                        <div className="absolute z-10 mt-2 w-full rounded-md border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
-                        {filteredAuteurs.map((author) => (
-                            <button
-                            key={author.id}
-                            type="button"
-                            className="flex w-full items-center justify-between rounded px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
-                            onClick={() => {
-                                setFormData((prev) => ({ ...prev, author_id: author.id }))
-                                setAuthorSearch(author.name)
-                                setShowAuthorSuggestions(false)
-                            }}
-                            >
-                            <span>{author.name}</span>
-                            </button>
-                        ))}
-                        </div>
-                    )}
-                    </div>
-                    {authorSearch.trim() && !formData.author_id && (
-                    <div className="flex items-center gap-2 pt-1">
-                        <Button
-                        type="button"
-                        variant="outline"
-                        onClick={async () => {
-                            try {
-                            await ensureAuthor(authorSearch)
-                            } catch (err) {
-                            setError(err instanceof Error ? err.message : "Erreur lors de la création de l’auteur")
-                            }
-                        }}
-                        >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Créer cet auteur
-                        </Button>
-                    </div>
-                    )}
+                    <p className="text-xs text-slate-500">Séparez plusieurs auteurs par des virgules.</p>
                 </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

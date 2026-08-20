@@ -1,6 +1,6 @@
     "use client"
 
-    import { useState } from "react"
+    import { useEffect, useState } from "react"
     import { useRouter } from "next/navigation"
     import { createClient } from "@/lib/supabase/client"
     import { Loader2, ArrowLeft, FileText, Upload, X } from "lucide-react"
@@ -11,10 +11,15 @@
     import { Card, CardContent } from "@/components/ui/card"
     import Link from "next/link"
 
+    interface Auteur {
+    id: string
+    name: string
+    }
+
     interface DocumentOption {
     id: string
     title: string
-    author: string
+    auteurs: { name: string }[] | { name: string } | null
     }
 
     export default function AddDigitalResourcePage() {
@@ -24,6 +29,9 @@
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState(false)
     const [documents, setDocuments] = useState<DocumentOption[]>([])
+    const [auteurs, setAuteurs] = useState<Auteur[]>([])
+    const [authorSearch, setAuthorSearch] = useState("")
+    const [showAuthorSuggestions, setShowAuthorSuggestions] = useState(false)
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
     const [formData, setFormData] = useState({
@@ -32,8 +40,47 @@
         type: "pdf",
         category: "projet_tutore",
         access_level: "all",
-        document_id: ""
+        document_id: "",
+        author_id: "",
+        downloadable: true
     })
+
+    useEffect(() => {
+        const loadAuteurs = async () => {
+        const { data } = await supabase.from("auteurs").select("id, name").order("name")
+        setAuteurs((data as Auteur[]) || [])
+        }
+        loadAuteurs()
+    }, [supabase])
+
+    const filteredAuteurs = authorSearch.trim()
+        ? auteurs.filter((author) => author.name.toLowerCase().includes(authorSearch.trim().toLowerCase()))
+        : auteurs.slice(0, 6)
+
+    const selectAuthor = (author: Auteur) => {
+        setFormData((prev) => ({ ...prev, author_id: author.id }))
+        setAuthorSearch(author.name)
+        setShowAuthorSuggestions(false)
+    }
+
+    const ensureAuthor = async () => {
+        const name = authorSearch.trim()
+        if (!name) return null
+        const existing = auteurs.find((author) => author.name.toLowerCase() === name.toLowerCase())
+        if (existing) return existing.id
+        const { data, error } = await supabase.from("auteurs").insert({ name }).select("id, name").single()
+        if (error) throw new Error(`Impossible de créer l'auteur : ${error.message}`)
+        if (data) {
+        setAuteurs((prev) => [...prev, data as Auteur].sort((a, b) => a.name.localeCompare(b.name)))
+        return data.id
+        }
+        return null
+    }
+
+    const getDocumentAuthor = (document: DocumentOption) => {
+        if (!document.auteurs) return "Auteur inconnu"
+        return Array.isArray(document.auteurs) ? document.auteurs[0]?.name || "Auteur inconnu" : document.auteurs.name
+    }
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -48,7 +95,7 @@
     const fetchDocuments = async () => {
         const { data } = await supabase
         .from("documents")
-        .select("id, title, author")
+        .select("id, title, auteurs(name)")
         .order("title")
         
         if (data) setDocuments(data as DocumentOption[])
@@ -67,6 +114,8 @@
         setSuccess(false)
 
         try {
+        const authorId = await ensureAuthor()
+        if (!authorId) throw new Error("Veuillez sélectionner ou saisir un auteur.")
         const { data: { user }, error: userError } = await supabase.auth.getUser()
         if (userError || !user) {
             throw new Error("Vous devez être connecté pour ajouter une ressource numérique.")
@@ -97,7 +146,9 @@
             type: formData.type,
             category: formData.category,
             access_level: formData.access_level,
-            document_id: formData.document_id || null
+            document_id: formData.document_id || null,
+            author_id: authorId,
+            downloadable: formData.downloadable
         })
 
         if (dbError) throw dbError
@@ -157,6 +208,16 @@
                 <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
                 <Textarea id="description" name="description" rows={3} value={formData.description} onChange={handleChange} />
+                </div>
+
+                <div className="space-y-2 relative">
+                <Label htmlFor="authorSearch">Auteur de la ressource</Label>
+                <Input id="authorSearch" value={authorSearch} onChange={(e) => { setAuthorSearch(e.target.value); setFormData((prev) => ({ ...prev, author_id: "" })); setShowAuthorSuggestions(true) }} onFocus={() => setShowAuthorSuggestions(true)} placeholder="Rechercher ou saisir un auteur" required />
+                {showAuthorSuggestions && filteredAuteurs.length > 0 && (
+                    <div className="absolute z-10 mt-1 w-full rounded-md border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                    {filteredAuteurs.map((author) => <button type="button" key={author.id} onClick={() => selectAuthor(author)} className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800">{author.name}</button>)}
+                    </div>
+                )}
                 </div>
 
                 {/* ZONE D'UPLOAD DE FICHIER */}
@@ -227,6 +288,11 @@
                 </select>
                 </div>
 
+                <label className="flex items-center gap-3 rounded-md border border-slate-200 p-3 text-sm dark:border-slate-700">
+                <input type="checkbox" name="downloadable" checked={formData.downloadable} onChange={(e) => setFormData((prev) => ({ ...prev, downloadable: e.target.checked }))} className="h-4 w-4 accent-amber-500" />
+                <span><strong className="text-slate-900 dark:text-white">Autoriser le téléchargement</strong><span className="block text-xs text-slate-500">Sinon, la ressource reste consultable dans le navigateur uniquement.</span></span>
+                </label>
+
                 <div className="space-y-2">
                 <Label htmlFor="document_id">Lier à un document du catalogue (optionnel)</Label>
                 <select 
@@ -239,7 +305,7 @@
                 >
                     <option value="">Aucun</option>
                     {documents.map((doc) => (
-                    <option key={doc.id} value={doc.id}>{doc.title} - {doc.author}</option>
+                    <option key={doc.id} value={doc.id}>{doc.title} - {getDocumentAuthor(doc)}</option>
                     ))}
                 </select>
                 </div>
