@@ -249,7 +249,7 @@
                 </div>
 
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                💡 Votre mot de passe doit contenir au moins 8 caractères.
+                    Votre mot de passe doit contenir au moins 8 caractères.
                 </p>
 
                 <div className="flex justify-end">
