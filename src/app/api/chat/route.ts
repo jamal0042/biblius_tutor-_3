@@ -3,78 +3,77 @@
 
     const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
 
-    // 🛠️ Définition des "outils" que Gemini peut utiliser
+    // 🛠️ Outils disponibles pour Gemini (Function Calling)
     const TOOLS = [
     {
         functionDeclarations: [
         {
             name: "search_documents",
-            description: "Recherche des livres/documents dans le catalogue de la bibliothèque. Utilise cette fonction quand l'utilisateur cherche un livre, demande une recommandation, ou veut savoir quels livres sont disponibles.",
+            description: "Recherche dans le catalogue : livres physiques ET ressources numériques. À utiliser quand l'utilisateur cherche un livre, demande une recommandation, ou veut savoir ce qui est disponible.",
             parameters: {
             type: "OBJECT",
             properties: {
-                query: {
-                type: "STRING",
-                description: "Mots-clés de recherche (titre, auteur, sujet). Laisse vide pour lister tous les livres.",
-                },
-                type: {
-                type: "STRING",
-                description: "Type de document : 'book', 'article', 'thesis', 'magazine', etc. Utilise 'all' ou laisse vide pour tous les types.",
-                },
-                limit: {
-                type: "INTEGER",
-                description: "Nombre maximum de résultats (défaut 5, max 10).",
-                },
+                query: { type: "STRING", description: "Mots-clés (titre, auteur, sujet). Vide pour lister." },
+                limit: { type: "INTEGER", description: "Nombre max de résultats (défaut 5, max 8)." },
             },
             },
         },
         {
             name: "get_user_loans",
-            description: "Récupère les emprunts en cours de l'utilisateur connecté. Utilise cette fonction quand l'utilisateur demande 'mes emprunts', 'quels livres j'ai', 'ce que j'ai emprunté'.",
+            description: "Emprunts en cours de l'utilisateur connecté.",
             parameters: { type: "OBJECT", properties: {} },
         },
         {
             name: "get_user_penalties",
-            description: "Récupère les pénalités/amendes impayées de l'utilisateur. Utilise quand l'utilisateur demande ses pénalités, amendes, ou combien il doit.",
+            description: "Pénalités/amendes impayées de l'utilisateur.",
             parameters: { type: "OBJECT", properties: {} },
         },
         {
             name: "get_library_info",
-            description: "Renvoie des informations générales sur la bibliothèque : horaires, localisation, règles d'emprunt. Utilise pour les questions sur la bibliothèque elle-même.",
+            description: "Infos générales : horaires, localisation, règles d'emprunt.",
             parameters: { type: "OBJECT", properties: {} },
         },
         ],
     },
     ]
 
-    // 🛠️ Implémentation des outils (ce qu'ils font réellement)
     type ToolArgs = Record<string, unknown>
     type SupabaseClient = Awaited<ReturnType<typeof createServerSupabaseClient>>
 
-    interface DocumentRow {
+    interface AuthorRow {
+    id?: string
+    name: string
+    }
+
+    interface BookRow {
+    id: string
     title: string
-    author: string | null
     type: string
     exemplaires_disponibles: number | null
-    auteurs: { name: string }[] | { name: string } | null
+    auteurs: AuthorRow[] | AuthorRow | null
+    }
+
+    interface DigitalResourceRow {
+    id: string
+    title: string
+    type: string
+    category: string | null
     }
 
     interface LoanRow {
     due_date: string
-    status: string
     documents: {
         title: string
-        auteurs: { name: string }[] | { name: string } | null
+        auteurs: AuthorRow[] | AuthorRow | null
     }[] | {
         title: string
-        auteurs: { name: string }[] | { name: string } | null
+        auteurs: AuthorRow[] | AuthorRow | null
     } | null
     }
 
     interface PenaltyRow {
     amount: number | null
     reason: string | null
-    created_at: string
     }
 
     interface HistoryMessage {
@@ -99,81 +98,128 @@
     parts: GeminiPart[]
     }
 
-    function getString(value: unknown): string | undefined {
-    return typeof value === "string" ? value : undefined
-    }
-
-    function getNumber(value: unknown): number | undefined {
-    return typeof value === "number" ? value : undefined
-    }
-
-    function getAuthorName(auteurs: DocumentRow["auteurs"]): string {
+    function getAuthorName(auteurs: BookRow["auteurs"]): string {
     const auteur = Array.isArray(auteurs) ? auteurs[0] : auteurs
-    return auteur?.name || "Inconnu"
+    return auteur?.name || "Auteur inconnu"
     }
 
+    function getString(value: unknown): string {
+    return typeof value === "string" ? value : ""
+    }
+
+    function getNumber(value: unknown): number {
+    return typeof value === "number" ? value : 0
+    }
+
+    // 🛠️ Exécution réelle des outils (accès à VOTRE base de données)
     async function executeTool(toolName: string, args: ToolArgs, supabase: SupabaseClient, memberId?: string) {
     try {
         switch (toolName) {
         case "search_documents": {
-            let query = supabase
-            .from("documents")
-            .select(`id, title, author, type, exemplaires_disponibles, auteurs (name)`)
-            .order("title", { ascending: true })
-            .limit(getNumber(args.limit) || 5)
+            const term = getString(args.query).trim()
+            const limit = Math.min(Math.max(getNumber(args.limit) || 5, 1), 8)
 
-            const searchTerm = getString(args.query)
-            if (searchTerm?.trim()) {
-            const term = searchTerm.trim()
-            query = query.or(`title.ilike.%${term}%,author.ilike.%${term}%`)
+            // ---------- 1. LIVRES PHYSIQUES (table documents + auteurs) ----------
+            let books: BookRow[] = []
+
+            if (term) {
+            // Recherche par TITRE
+            const { data: titleMatches } = await supabase
+                .from("documents")
+                .select(`id, title, type, exemplaires_disponibles, auteurs (name)`)
+                .ilike("title", `%${term}%`)
+                .limit(limit)
+            books = titleMatches || []
+
+            // Recherche par AUTEUR (via la table auteurs)
+            if (books.length < limit) {
+                const { data: authors } = await supabase
+                .from("auteurs")
+                .select("id")
+                .ilike("name", `%${term}%`)
+
+                if (authors && authors.length > 0) {
+                const { data: authorBooks } = await supabase
+                    .from("documents")
+                    .select(`id, title, type, exemplaires_disponibles, auteurs (name)`)
+                        .in("author_id", (authors as unknown as AuthorRow[]).map((a) => a.id))
+                    .limit(limit - books.length)
+                books = [...books, ...(authorBooks || [])]
+                }
             }
-            const documentType = getString(args.type)
-            if (documentType && documentType !== "all") {
-            query = query.eq("type", documentType)
+            } else {
+            const { data } = await supabase
+                .from("documents")
+                .select(`id, title, type, exemplaires_disponibles, auteurs (name)`)
+                .order("title", { ascending: true })
+                .limit(limit)
+            books = data || []
             }
 
-            const { data } = await query
-            return ((data || []) as unknown as DocumentRow[]).map((d) => ({
-            title: d.title,
-            author: getAuthorName(d.auteurs) || d.author || "Inconnu",
-            type: d.type,
-            available: (d.exemplaires_disponibles || 0) > 0,
-            count: d.exemplaires_disponibles || 0,
+            const livres = books.map((b) => ({
+            type: "livre_physique",
+            title: b.title,
+            author: getAuthorName(b.auteurs),
+            available: (b.exemplaires_disponibles || 0) > 0,
+            link: `/catalogue/${b.id}`,
             }))
+
+            // ---------- 2. RESSOURCES NUMÉRIQUES ----------
+            let numQuery = supabase
+            .from("digital_resources")
+            .select(`id, title, type, category`)
+            .order("created_at", { ascending: false })
+
+            if (term) {
+            numQuery = numQuery.ilike("title", `%${term}%`)
+            }
+            numQuery = numQuery.limit(limit)
+
+            const { data: nums } = await numQuery
+
+            const ressources = (nums as unknown as DigitalResourceRow[] || []).map((n) => ({
+            type: "ressource_numerique",
+            title: n.title,
+            category: n.category,
+            link: `/dashboard/numerique?open=${n.id}`,
+            }))
+
+            return { livres, ressources_numeriques: ressources }
         }
 
         case "get_user_loans": {
-            if (!memberId) return { error: "Non connecté" }
+            if (!memberId) return { error: "Utilisateur non connecté" }
             const { data } = await supabase
             .from("prets")
             .select(`due_date, status, documents (title, auteurs (name))`)
             .eq("member_id", memberId)
             .in("status", ["active", "overdue"])
-            
+
             return ((data || []) as unknown as LoanRow[]).map((l) => {
-            const document = Array.isArray(l.documents) ? l.documents[0] : l.documents
-            const auteur = document?.auteurs
+            const doc = Array.isArray(l.documents) ? l.documents[0] : l.documents
+            const auteur = doc?.auteurs
             const firstAuthor = Array.isArray(auteur) ? auteur[0] : auteur
             return {
-            title: document?.title || "Inconnu",
-            author: firstAuthor?.name || "Inconnu",
-            dueDate: l.due_date,
-            status: l.status,
-            isLate: new Date(l.due_date) < new Date(),
+                title: doc?.title || "Inconnu",
+                author: firstAuthor?.name || "Inconnu",
+                dueDate: l.due_date,
+                isLate: new Date(l.due_date) < new Date(),
             }
             })
         }
 
         case "get_user_penalties": {
-            if (!memberId) return { error: "Non connecté" }
+            if (!memberId) return { error: "Utilisateur non connecté" }
             const { data } = await supabase
             .from("penalites")
-            .select("amount, reason, created_at")
+            .select("amount, reason")
             .eq("member_id", memberId)
             .eq("status", "unpaid")
-            
-            const penalties = (data || []) as unknown as PenaltyRow[]
-            const total = penalties.reduce((sum, penalty) => sum + (penalty.amount || 0), 0)
+
+            const total = (data as unknown as PenaltyRow[] || []).reduce(
+            (sum, penalty) => sum + (penalty.amount || 0),
+            0,
+            )
             return { penalties: data || [], total }
         }
 
@@ -182,7 +228,6 @@
             horaires: "Lundi-Vendredi 8h-20h, Samedi 9h-18h, Dimanche fermé",
             localisation: "Bâtiment principal, Rez-de-chaussée",
             regles: "Emprunt de 15 jours, maximum 5 livres simultanés, réservation possible",
-            contact: "accueil@biblius.fr",
             }
         }
 
@@ -207,39 +252,38 @@
 
         const systemPrompt = `Tu es Biblius, l'assistant IA de la bibliothèque universitaire Biblius.
 
-    IDENTITÉ :
-    - Tu es chaleureux, cultivé et serviable
-    - Tu parles français avec élégance mais sans être pompeux
-    - Tu utilises des emojis avec parcimonie (📚 📖 ✨)
+    IDENTITÉ : chaleureux, cultivé, serviable. Tu parles français. Emojis avec parcimonie (📚  ✨).
 
     RÈGLES IMPORTANTES :
-    1. Quand l'utilisateur demande un livre, une recommandation, ou veut savoir ce qui est disponible : APPELLE l'outil search_documents
-    2. Quand il demande ses emprunts : APPELLE get_user_loans
-    3. Quand il demande ses pénalités : APPELLE get_user_penalties
-    4. Quand il demande les horaires ou infos générales : APPELLE get_library_info
-    5. Base tes réponses UNIQUEMENT sur les données des outils, n'invente JAMAIS de titres ou auteurs
-    6. Sois concis (3-6 phrases max sauf liste de livres)
-    7. Si aucun résultat, propose des alternatives ou suggère d'explorer le catalogue
+    1. Pour toute recherche de livre/recommandation : APPELLE search_documents.
+    2. Pour les emprunts de l'utilisateur : APPELLE get_user_loans.
+    3. Pour les pénalités : APPELLE get_user_penalties.
+    4. Pour horaires/règles : APPELLE get_library_info.
+    5. N'invente JAMAIS de titres ou d'auteurs : base-toi UNIQUEMENT sur les résultats des outils.
+    6. 🌟 LIENS OBLIGATOIRES : quand tu proposes un document, inclus TOUJOURS son lien cliquable au format markdown [texte](url) en utilisant EXACTEMENT le champ "link" fourni par l'outil.
+    Exemple : [📖 Lire « la vie » dans la plateforme](/dashboard/numerique?open=abc-123)
+    ou [📚 Voir la fiche du livre](/catalogue/xyz-456)
+    7. Sois concis (3-6 phrases max, sauf listes).
+    8. Si aucun résultat, propose d'élargir la recherche ou de parcourir le catalogue : [Parcourir le catalogue](/catalogue)
 
     L'utilisateur s'appelle : ${memberName || "un membre"}.`
 
-        // Historique au format Gemini
-        const contents = [
+        // Historique au format Gemini (roles: user / model)
+        const contents: GeminiContent[] = [
         ...(history || [])
             .slice(-8)
-            .map((m: HistoryMessage): GeminiContent => ({
+            .map((m: HistoryMessage) => ({
             role: m.role === "bot" ? "model" : "user",
             parts: [{ text: m.content }],
             })),
         { role: "user", parts: [{ text: message }] },
-        ] as GeminiContent[]
+        ]
 
-        // 🔄 Boucle de conversation (peut appeler plusieurs outils)
+        // 🔄 Boucle de function calling (max 3 tours)
         let finalReply = ""
         let iterations = 0
-        const MAX_ITERATIONS = 3
 
-        while (iterations < MAX_ITERATIONS) {
+        while (iterations < 3) {
         iterations++
 
         const response = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
@@ -254,20 +298,16 @@
         })
 
         if (!response.ok) {
-            const errText = await response.text()
-            console.error("Erreur Gemini:", errText)
+            console.error("Erreur Gemini:", await response.text())
             return NextResponse.json({ error: "Erreur Gemini" }, { status: 500 })
         }
 
         const data = await response.json()
-        const candidate = data?.candidates?.[0]
-        const parts = candidate?.content?.parts || []
-
-        // Chercher s'il y a un appel de fonction
-        const functionCall = (parts as GeminiPart[]).find((p) => p.functionCall)
+        const parts = (data?.candidates?.[0]?.content?.parts || []) as GeminiPart[]
+        const functionCall = parts.find((p) => p.functionCall)
 
         if (!functionCall) {
-            // Pas d'appel → réponse textuelle finale
+            // Pas d'appel d'outil → réponse textuelle finale
             finalReply = parts[0]?.text || "Je n'ai pas pu formuler de réponse."
             break
         }
@@ -278,25 +318,15 @@
 
         const toolName = requestedFunction.name
         const toolArgs = requestedFunction.args || {}
-        
         console.log(`🔧 Gemini appelle: ${toolName}`, toolArgs)
+
         const toolResult = await executeTool(toolName, toolArgs, supabase, memberId)
 
-        // Ajouter la réponse de l'outil à la conversation
-        contents.push({
-            role: "model",
-            parts: [{ functionCall: requestedFunction }],
-        })
+        // Renvoyer le résultat à Gemini pour qu'il formule la réponse
+        contents.push({ role: "model", parts: [{ functionCall: requestedFunction }] })
         contents.push({
             role: "user",
-            parts: [
-            {
-                functionResponse: {
-                name: toolName,
-                response: { result: toolResult },
-                },
-            },
-            ],
+            parts: [{ functionResponse: { name: toolName, response: { result: toolResult } } }],
         })
         }
 

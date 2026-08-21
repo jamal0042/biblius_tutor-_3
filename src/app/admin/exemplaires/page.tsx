@@ -8,8 +8,6 @@
     import { Input } from "@/components/ui/input"
     import { AlertCircle, BookOpen, Plus, RotateCcw, ScanLine, X } from "lucide-react"
 
-    const PENALTY_PER_DAY = 100
-
     // 🌟 NOUVELLES INTERFACES adaptées à la relation auteurs
     interface MemberData {
     id: string
@@ -198,47 +196,23 @@
         setSaving(true)
 
         const today = new Date()
-        const due = new Date(returnLoan.due_date)
-        const daysLate = Math.max(0, Math.ceil((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24)))
-        const penalty = daysLate * PENALTY_PER_DAY
         const member = first(returnLoan.members)
         const doc = first(returnLoan.documents)
 
-        // 🌟 Supprimé due_date (plus dans la table retours)
-        await supabase.from("retours").insert({
+        const { error } = await supabase.from("retours").insert({
         pret_id: returnLoan.id,
-        member_id: member?.id ?? null,
-        document_id: doc?.id ?? null,
+        member_id: member?.id,
+        document_id: doc?.id,
         exemplaire_id: returnLoan.exemplaire_id,
         return_date: today.toISOString(),
-        days_late: daysLate,
-        penalty_amount: penalty,
         book_condition: condition,
         notes: notes || null
         })
 
-        await supabase
-        .from("prets")
-        .update({ status: "returned" })
-        .eq("id", returnLoan.id)
-
-        if (returnLoan.exemplaire_id) {
-        await supabase
-            .from("exemplaires")
-            .update({ status: "available" })
-            .eq("id", returnLoan.exemplaire_id)
-        }
-
-        if (penalty > 0 && member) {
-        await supabase.from("penalites").insert({
-            member_id: member.id,
-            pret_id: returnLoan.id,
-            amount: penalty,
-            days: daysLate,
-            reason: `Retard de ${daysLate} jour(s)`,
-            status: "unpaid",
-            type: "late"
-        })
+        if (error) {
+        alert("Erreur : " + error.message)
+        setSaving(false)
+        return
         }
 
         setReturnLoan(null)
@@ -501,23 +475,6 @@
                     <label className="text-sm font-medium mb-1 block">Notes (optionnel)</label>
                     <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Ex: couverture déchirée" />
                 </div>
-
-                {(() => {
-                    const daysLate = Math.max(
-                    0,
-                    Math.ceil((today.getTime() - new Date(returnLoan.due_date).getTime()) / (1000 * 60 * 60 * 24))
-                    )
-
-                    return daysLate > 0 ? (
-                    <div className="p-3 bg-red-50 dark:bg-red-500/10 rounded-lg text-sm text-red-700 dark:text-red-400">
-                        Retard de {daysLate} jour(s) → Pénalité : {daysLate * PENALTY_PER_DAY} FCFA
-                    </div>
-                    ) : (
-                    <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 rounded-lg text-sm text-emerald-700 dark:text-emerald-400">
-                        Retour à temps, aucune pénalité.
-                    </div>
-                    )
-                })()}
 
                 <Button onClick={handleReturn} disabled={saving} className="w-full bg-amber-500 hover:bg-amber-600 text-white">
                     Confirmer le retour
