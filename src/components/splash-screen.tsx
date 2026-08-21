@@ -95,7 +95,7 @@
             
             <p className="text-xs text-slate-400 mt-2 text-center">
                 {progress < 30 && "Initialisation..."}
-                {progress >= 30 && progress < 60 && "Connexion à la base de données..."}
+                {progress >= 30 && progress < 60 && "Connexion à la bibliotheque..."}
                 {progress >= 60 && progress < 90 && "Chargement des ressources..."}
                 {progress >= 90 && "Presque terminé..."}
             </p>
