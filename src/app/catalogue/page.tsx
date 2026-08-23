@@ -1,6 +1,7 @@
     "use client"
 
     import { useState, useEffect, useCallback } from "react"
+    import { useRouter } from "next/navigation"
     import Image from "next/image"
     import { Search, BookOpen, ArrowLeft, Pencil, X, Loader2, Grid2x2, LayoutGrid } from "lucide-react"
     import { Button } from "@/components/ui/button"
@@ -45,6 +46,7 @@
     }
 
     export default function CataloguePage() {
+    const router = useRouter()
     const supabase = createClient()
     const { member } = useAuth()
     const isAdmin = member ? isStaff(member.role) : false
@@ -55,6 +57,18 @@
     const [selectedType, setSelectedType] = useState<string>("all")
     const [viewMode, setViewMode] = useState<ViewMode>("grid")
 
+    // 🌟 BOUTON RETOUR INTELLIGENT :
+    // - Si on vient d'une page de l'app → retour arrière (reste connecté)
+    // - Sinon → tableau de bord si connecté, accueil sinon
+    const handleBack = () => {
+        const idx = (window.history.state as { idx?: number } | null)?.idx ?? 0
+        if (idx > 0) {
+        router.back()
+        } else {
+        router.push(member ? "/dashboard" : "/")
+        }
+    }
+
     const fetchDocuments = useCallback(async () => {
         setLoading(true)
         const { data } = await supabase
@@ -64,7 +78,7 @@
             auteurs (id, name)
         `)
         .order("title", { ascending: true })
-        
+
         setDocuments((data as unknown as Document[]) || [])
         setLoading(false)
     }, [supabase])
@@ -77,12 +91,13 @@
     // Filtrage côté client
     const filteredDocs = documents.filter((doc) => {
         const q = searchTerm.trim().toLowerCase()
-        const matchesSearch = !q || 
-        doc.title.toLowerCase().includes(q) || 
+        const matchesSearch =
+        !q ||
+        doc.title.toLowerCase().includes(q) ||
         getAuthorName(doc).toLowerCase().includes(q)
-        
+
         const matchesType = selectedType === "all" || doc.type === selectedType
-        
+
         return matchesSearch && matchesType
     })
 
@@ -94,14 +109,16 @@
         {/* ===== EN-TÊTE STICKY ===== */}
         <div className="sticky top-16 z-30 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 space-y-3">
-            
             {/* Ligne 1 : Retour + Titre */}
             <div className="flex items-center justify-between">
-                <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
+                <button
+                onClick={handleBack}
+                className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+                >
                 <ArrowLeft className="w-4 h-4" />
                 <span className="hidden sm:inline">Retour</span>
-                </Link>
-                
+                </button>
+
                 <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <BookOpen className="w-6 h-6 text-amber-500" />
                 Catalogue
@@ -109,7 +126,7 @@
                     {filteredDocs.length}
                 </Badge>
                 </h1>
-                
+
                 <div className="flex items-center gap-1">
                 <Button
                     variant={viewMode === "grid" ? "default" : "ghost"}
@@ -177,7 +194,6 @@
 
         {/* ===== CONTENU ===== */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            
             {loading ? (
             <div className="flex items-center justify-center h-64">
                 <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
@@ -219,7 +235,6 @@
         <div className="relative group">
         <Link href={`/catalogue/${doc.id}`} className="block h-full">
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-amber-500/50 rounded-lg overflow-hidden transition-all hover:shadow-lg hover:-translate-y-0.5 flex flex-col h-full">
-            
             {/* Couverture COMPACTE avec Image Next.js */}
             <div className={`relative ${compact ? "h-24 sm:h-28" : "h-32 sm:h-40"} bg-slate-100 dark:bg-slate-800 overflow-hidden`}>
                 {doc.cover_url ? (
@@ -235,7 +250,7 @@
                     <BookOpen className={compact ? "w-6 h-6" : "w-8 h-8"} />
                 </div>
                 )}
-                
+
                 <Badge
                 className={`absolute top-1 right-1 text-[9px] sm:text-[10px] px-1.5 py-0 shadow-sm ${
                     isAvailable
@@ -254,7 +269,7 @@
                 >
                 {doc.title}
                 </h3>
-                
+
                 {!compact && (
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5" title={authorName}>
                     {authorName}

@@ -14,7 +14,6 @@
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState(false)
-    const [generatedPassword, setGeneratedPassword] = useState("")
 
     const [formData, setFormData] = useState({
         firstName: "",
@@ -46,16 +45,17 @@
         setSuccess(false)
 
         const password = generatePassword()
-        setGeneratedPassword(password)
 
         try {
         const { data: authData, error: authError } = await supabase.auth.signUp({
             email: formData.email,
             password: password,
             options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback?next=/premiere-connexion`,
             data: {
                 first_name: formData.firstName,
                 last_name: formData.lastName,
+                is_invited: true,
             }
             }
         })
@@ -103,7 +103,7 @@
                 Compte cree avec succes !
                 </h2>
                 <p className="text-emerald-700 dark:text-emerald-300 mb-6">
-                Le compte de <strong>{formData.firstName} {formData.lastName}</strong> a ete cree et est maintenant actif.
+                Le compte de <strong>{formData.firstName} {formData.lastName}</strong> a ete cree. Un email de confirmation lui a ete envoye.
                 </p>
 
                 <div className="bg-white dark:bg-slate-900 rounded-lg p-6 text-left space-y-3 border border-emerald-200 dark:border-emerald-900">
@@ -112,12 +112,9 @@
                     <p className="font-mono text-sm text-slate-900 dark:text-white">{formData.email}</p>
                 </div>
                 <div>
-                    <Label className="text-xs text-slate-500">Mot de passe temporaire</Label>
-                    <p className="font-mono text-sm text-slate-900 dark:text-white bg-amber-50 dark:bg-amber-500/10 p-2 rounded border border-amber-200 dark:border-amber-900">
-                    {generatedPassword}
-                    </p>
-                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                    Copiez ce mot de passe et communiquez-le a l&apos;utilisateur.
+                    <Label className="text-xs text-slate-500">Prochaine etape</Label>
+                    <p className="text-sm text-slate-600 dark:text-slate-300">
+                    L&apos;utilisateur doit ouvrir le lien recu par email pour definir son nom et son nouveau mot de passe.
                     </p>
                 </div>
                 </div>
@@ -125,20 +122,10 @@
                 <div className="flex gap-3 mt-6">
                 <Button
                     onClick={() => {
-                    navigator.clipboard.writeText(generatedPassword)
-                    alert("Mot de passe copie !")
-                    }}
-                    variant="outline"
-                    className="flex-1"
-                >
-                    Copier le mot de passe
-                </Button>
-                <Button
-                    onClick={() => {
                     setSuccess(false)
                     setFormData({ firstName: "", lastName: "", email: "", phone: "", matricule: "", role: "student", department: "" })
                     }}
-                    className="flex-1 bg-amber-500 hover:bg-amber-600 text-white"
+                    className="w-full bg-amber-500 hover:bg-amber-600 text-white"
                 >
                     Creer un autre compte
                 </Button>
@@ -190,17 +177,17 @@
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                    <Label htmlFor="firstName">Prenom *</Label>
+                    <Label htmlFor="firstName">Prenom </Label>
                     <Input id="firstName" name="firstName" value={formData.firstName} onChange={handleChange} placeholder="Jean" required />
                 </div>
                 <div className="space-y-2">
-                    <Label htmlFor="lastName">Nom *</Label>
+                    <Label htmlFor="lastName">Nom </Label>
                     <Input id="lastName" name="lastName" value={formData.lastName} onChange={handleChange} placeholder="Dupont" required />
                 </div>
                 </div>
 
                 <div className="space-y-2">
-                <Label htmlFor="email">Email *</Label>
+                <Label htmlFor="email">Email </Label>
                 <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <Input id="email" name="email" type="email" value={formData.email} onChange={handleChange} placeholder="jean.dupont@exemple.com" className="pl-10" required />

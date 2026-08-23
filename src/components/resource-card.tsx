@@ -27,6 +27,8 @@
     category: string
     access_level: string
     uploaded_by: string | null
+    author_id?: string | null
+    auteur_direct?: MaybeArray<AuteurInfo>
     documents: MaybeArray<DocumentInfo>
     }
 
@@ -40,6 +42,10 @@
     function getAuthorName(doc: DocumentInfo | null): string {
     if (!doc) return "Auteur inconnu"
     return toSingle(doc.auteurs)?.name || "Auteur inconnu"
+    }
+
+    function getResourceAuthor(resource: DigitalResource): string {
+    return toSingle(resource.auteur_direct)?.name || getAuthorName(toSingle(resource.documents))
     }
 
     function getDocTitle(doc: DocumentInfo | null): string | null {
@@ -248,7 +254,7 @@
                     Document lié
                 </div>
                 <div className="font-medium text-sm text-slate-900 dark:text-white">{docTitle}</div>
-                <div className="text-xs text-slate-500">{getAuthorName(doc)}</div>
+                <div className="text-xs text-slate-500">{getResourceAuthor(resource)}</div>
                 </div>
             )}
 

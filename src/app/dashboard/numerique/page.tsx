@@ -8,19 +8,17 @@
     const member = await getCurrentMember()
     const supabase = await createServerSupabaseClient()
 
-    // Requête corrigée : auteurs(name) au lieu de author
-    const selectClause = `*, documents (title, author_id, auteurs (id, name))`
+    // Les auteurs sont liés aux ressources via digital_resources.author_id.
+    const selectClause = `
+        *,
+        documents (title, auteurs (id, name)),
+        auteur_direct:auteurs!digital_resources_author_id_fkey (id, name)
+    `
 
     // 1. Mes publications (si connecté)
-    let myResources: DigitalResource[] = []
-    if (member) {
-        const { data } = await supabase
-        .from("digital_resources")
-        .select(selectClause)
-        .eq("uploaded_by", member.id)
-        .order("created_at", { ascending: false })
-        myResources = (data as unknown as DigitalResource[]) || []
-    }
+    const myResources: DigitalResource[] = []
+    // La table digital_resources ne contient pas de colonne uploaded_by.
+    // Les ressources sont donc chargées par leur niveau d'accès ci-dessous.
 
     // 2. Ressources visibles selon le rôle
     let query = supabase
