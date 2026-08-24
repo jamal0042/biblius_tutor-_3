@@ -66,6 +66,7 @@
             email: formData.email,
             password: formData.password,
             options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback?next=/login?confirmed=1`,
             data: {
                 first_name: formData.firstName,
                 last_name: formData.lastName,

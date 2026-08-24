@@ -35,9 +35,29 @@
 
     const handleApprove = async (memberId: string) => {
         setProcessing(memberId)
+        const member = pendingMembers.find((item) => item.id === memberId)
         const { error } = await supabase.from("members").update({ status: "active", updated_at: new Date().toISOString() }).eq("id", memberId)
-        if (!error) setPendingMembers((prev) => prev.filter((m) => m.id !== memberId))
-        else alert("Erreur lors de la validation.")
+
+        if (error) {
+            alert("Erreur lors de la validation.")
+            setProcessing(null)
+            return
+        }
+
+        const { error: emailError } = await supabase.auth.resend({
+            type: "signup",
+            email: member?.email ?? "",
+            options: {
+                emailRedirectTo: `${window.location.origin}/auth/callback?next=/login?confirmed=1`,
+            },
+        })
+
+        if (emailError) {
+            setPendingMembers((prev) => prev.filter((m) => m.id !== memberId))
+            alert("La demande a été validée. L’email n’a pas pu être renvoyé ; l’adresse est peut-être déjà confirmée.")
+        } else {
+            setPendingMembers((prev) => prev.filter((m) => m.id !== memberId))
+        }
         setProcessing(null)
     }
 
