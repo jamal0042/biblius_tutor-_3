@@ -38,6 +38,7 @@
     first_name: string
     last_name: string
     email: string
+        max_loans: number
     }
 
     interface ExemplaireOption {
@@ -94,7 +95,7 @@
         const [membersResult, exemplairesResult, loansResult] = await Promise.all([
             supabase
             .from("members")
-            .select("id, first_name, last_name, email")
+            .select("id, first_name, last_name, email, max_loans")
             .eq("status", "active"),
             supabase
             .from("exemplaires")
@@ -156,8 +157,10 @@
         .eq("member_id", memberId)
         .in("status", ["active", "overdue"])
 
-        if ((count || 0) >= 5) {
-        alert("Ce membre a atteint sa limite de 5 emprunts simultanés.")
+        const selectedMember = members.find((member) => member.id === memberId)
+        const loanLimit = selectedMember?.max_loans ?? 5
+        if ((count || 0) >= loanLimit) {
+        alert(`Ce membre a atteint sa limite de ${loanLimit} emprunts simultanés.`)
         return
         }
 

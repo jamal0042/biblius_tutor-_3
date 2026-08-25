@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { HeroCarousel } from "@/components/hero-carousel"
+import { ResourceCardClient, type DigitalResource } from "@/components/resource-card"
+import { createServerSupabaseClient, getCurrentMember } from "@/lib/supabase/server"
 import Link from "next/link"
 
 const features = [
@@ -51,7 +53,22 @@ const stats = [
   { value: "24/7", label: "Accès en ligne" }
 ]
 
-export default function HomePage() {
+export default async function HomePage() {
+  const supabase = await createServerSupabaseClient()
+  const member = await getCurrentMember()
+  const { data: resources } = await supabase
+    .from("digital_resources")
+    .select(`
+      *,
+      documents (title, auteurs (id, name)),
+      auteur_direct:auteurs!digital_resources_author_id_fkey (id, name)
+    `)
+    .eq("access_level", "all")
+    .order("created_at", { ascending: false })
+    .limit(6)
+
+  const publicResources = (resources as unknown as DigitalResource[]) || []
+
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300 flex flex-col">
       <Header />
@@ -103,6 +120,34 @@ export default function HomePage() {
               </div>
             ))}
           </div>
+
+          {/* Section Ressources Numériques publiques */}
+          <section className="mb-24" aria-labelledby="public-resources-title">
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-10">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">Accès libre</p>
+                <h2 id="public-resources-title" className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mt-2">
+                  Ressources numériques
+                </h2>
+                <p className="text-lg text-slate-600 dark:text-slate-400 mt-3 max-w-2xl">
+                  Découvrez les ressources disponibles avant de vous connecter.
+                </p>
+              </div>
+              <Link href="/login" className="text-sm font-medium text-amber-600 dark:text-amber-500 hover:underline">
+                Se connecter pour accéder à tout le contenu
+              </Link>
+            </div>
+
+            {publicResources.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {publicResources.map((resource) => (
+                  <ResourceCardClient key={resource.id} resource={resource} isAuthenticated={Boolean(member)} />
+                ))}
+              </div>
+            ) : (
+              <p className="text-slate-500 dark:text-slate-400">Aucune ressource numérique publique pour le moment.</p>
+            )}
+          </section>
 
           {/* Section Fonctionnalités */}
           <div className="mb-16">

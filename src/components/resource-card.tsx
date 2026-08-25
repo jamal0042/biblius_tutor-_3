@@ -1,6 +1,7 @@
     "use client"
 
     import { useEffect, useState } from "react"
+        import { useRouter } from "next/navigation"
     import Image from "next/image"
     import { FileText, BookOpen, User, X, Download, Eye, Loader2 } from "lucide-react"
     import { Button } from "@/components/ui/button"
@@ -215,7 +216,8 @@
     // ============================================================
     // CARTE RESSOURCE
     // ============================================================
-    export function ResourceCardClient({ resource, isMine }: { resource: DigitalResource; isMine?: boolean }) {
+    export function ResourceCardClient({ resource, isMine, isAuthenticated = true }: { resource: DigitalResource; isMine?: boolean; isAuthenticated?: boolean }) {
+    const router = useRouter()
     const [viewerOpen, setViewerOpen] = useState(false)
     const doc = toSingle(resource.documents)
     const docTitle = getDocTitle(doc)
@@ -273,11 +275,17 @@
             </div>
 
             <Button
-                onClick={() => setViewerOpen(true)}
+                onClick={() => {
+                if (!isAuthenticated) {
+                    router.push("/login")
+                    return
+                }
+                setViewerOpen(true)
+                }}
                 className="w-full bg-amber-500 hover:bg-amber-600 text-white"
             >
                 <Eye className="w-4 h-4 mr-2" />
-                Lire dans la plateforme
+                {isAuthenticated ? "Lire dans la plateforme" : "Se connecter pour lire"}
             </Button>
             </CardContent>
         </Card>

@@ -48,6 +48,7 @@
     first_name: string
     last_name: string
     email: string
+        max_loans: number
     phone?: string | null
     matricule?: string | null
     department?: string | null
@@ -124,7 +125,7 @@
         setLoading(true)
         try {
         const [membersResult, documentsResult, exemplairesResult, loansResult] = await Promise.all([
-            supabase.from("members").select("id, first_name, last_name, email, phone, matricule, department").eq("status", "active"),
+            supabase.from("members").select("id, first_name, last_name, email, phone, matricule, department, max_loans").eq("status", "active"),
             supabase.from("documents").select("id, title, auteurs (id, name)").order("title", { ascending: true }),
             supabase
             .from("exemplaires")
@@ -195,8 +196,9 @@
         .eq("member_id", memberId)
         .in("status", ["active", "overdue"])
 
-        if ((count || 0) >= 5) {
-        alert("Ce membre a atteint sa limite de 5 emprunts simultanés.")
+        const loanLimit = selectedMember?.max_loans ?? 5
+        if ((count || 0) >= loanLimit) {
+        alert(`Ce membre a atteint sa limite de ${loanLimit} emprunts simultanés.`)
         return
         }
 
