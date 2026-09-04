@@ -73,15 +73,28 @@
 
     const fetchDocuments = useCallback(async () => {
         setLoading(true)
-        const { data } = await supabase
-        .from("documents")
-        .select(`
+        const [{ data }, { data: exemplaires }] = await Promise.all([
+        supabase
+            .from("documents")
+            .select(`
             *,
             auteurs (id, name)
         `)
-        .order("title", { ascending: true })
+            .order("title", { ascending: true }),
+        supabase.from("exemplaires").select("document_id, status"),
+        ])
 
-        setDocuments((data as unknown as Document[]) || [])
+        const availByDoc = new Map<string, number>()
+        for (const ex of (exemplaires || []) as Array<{ document_id: string; status: string }>) {
+        if (ex.status === "available") availByDoc.set(ex.document_id, (availByDoc.get(ex.document_id) || 0) + 1)
+        }
+
+        const docs = ((data as unknown as Document[]) || []).map((d) => ({
+        ...d,
+        exemplaires_disponibles: availByDoc.get(d.id) || 0,
+        }))
+
+        setDocuments(docs)
         setLoading(false)
     }, [supabase])
 

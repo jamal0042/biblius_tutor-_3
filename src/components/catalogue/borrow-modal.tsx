@@ -54,15 +54,34 @@
         const todayStr = new Date().toISOString().split("T")[0]
         const dueDateStr = new Date(new Date().setDate(new Date().getDate() + (isRestricted ? 1 : 15))).toISOString().split("T")[0]
 
+        const { data: exemplaires, error: exError } = await supabase
+            .from("exemplaires")
+            .select("id")
+            .eq("document_id", bookId)
+            .eq("status", "available")
+            .limit(1)
+
+        if (exError) throw exError
+        const exemplaire = exemplaires?.[0]
+        if (!exemplaire) {
+            throw new Error("Aucun exemplaire disponible pour cet ouvrage.")
+        }
+
         const { error } = await supabase.from("prets").insert({
             member_id: userId,
-            document_id: bookId,
+            exemplaire_id: exemplaire.id,
             loan_date: todayStr,
             due_date: dueDateStr,
-            status: "active"
+            status: "active",
+            notified_overdue: false
         })
 
         if (error) throw error
+
+        await supabase
+            .from("exemplaires")
+            .update({ status: "loaned" })
+            .eq("id", exemplaire.id)
 
         onClose()
         router.push("/dashboard/emprunts")

@@ -86,8 +86,7 @@
         due_date: string
         exemplaire_id: string
         members: MaybeArray<MemberData>
-        documents: MaybeArray<DocumentData>
-        exemplaires: MaybeArray<ExemplaireData>
+        exemplaires: MaybeArray<ExemplaireData & { documents: MaybeArray<DocumentData> }>
     }
 
     function toSingle<T>(rel: MaybeArray<T>): T | null {
@@ -253,15 +252,15 @@
                                 last_name,
                                 email
                             ),
-                            documents (
-                                id,
-                                title,
-                                auteurs (id, name)
-                            ),
                             exemplaires (
                                 id,
                                 barcode,
-                                status
+                                status,
+                                documents (
+                                    id,
+                                    title,
+                                    auteurs (id, name)
+                                )
                             )
                         `
                         )
@@ -508,7 +507,6 @@
                 const loanRows = pendingLoans.map(
                     (ex) => ({
                         member_id: memberId,
-                        document_id: ex.document_id,
                         exemplaire_id: ex.id,
                         loan_date: loanDate,
                         due_date: dueDate,
@@ -599,24 +597,12 @@
             try {
                 const today = new Date()
 
-                const member = toSingle(
-                    returnLoan.members
-                )
-
-                const doc = toSingle(
-                    returnLoan.documents
-                )
-
                 const {
                     error: returnError,
                 } = await supabase
                     .from("retours")
                     .insert({
                         pret_id: returnLoan.id,
-                        member_id: member?.id,
-                        document_id: doc?.id,
-                        exemplaire_id:
-                            returnLoan.exemplaire_id,
                         return_date:
                             today.toISOString(),
                         book_condition: condition,

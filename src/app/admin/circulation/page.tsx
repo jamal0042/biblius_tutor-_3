@@ -50,8 +50,7 @@
     due_date: string
     exemplaire_id: string
     members: MemberData[] | null          // ✅ Tableau
-    documents: DocData[] | null           // ✅ Tableau avec id
-    exemplaires: ExemplaireData[] | null  // ✅ Tableau
+    exemplaires: (ExemplaireData & { documents: DocData[] | null })[] | null  // ✅ Tableau avec documents via exemplaire
     }
 
     // Fonction utilitaire pour extraire le premier élément d'une relation Supabase
@@ -101,8 +100,7 @@
             .select(`
                 id, loan_date, due_date, exemplaire_id,
                 members (id, first_name, last_name, email),
-                documents (id, title, auteurs (id, name)),
-                exemplaires (id, barcode, status)
+                exemplaires (id, barcode, status, documents (id, title, auteurs (id, name)))
             `)
             .in("status", ["active", "overdue"])
             .order("due_date", { ascending: true }),
@@ -174,7 +172,6 @@
 
         const { error } = await supabase.from("prets").insert({
         member_id: memberId,
-        document_id: selectedExemplaire.document_id,
         exemplaire_id: selectedExemplaire.id,
         loan_date: new Date().toISOString().split("T")[0],
         due_date: dueDate,
@@ -205,14 +202,9 @@
         setSaving(true)
 
         const today = new Date()
-        const member = first(returnLoan.members)
-        const doc = first(returnLoan.documents)
 
         const { error } = await supabase.from("retours").insert({
         pret_id: returnLoan.id,
-        member_id: member?.id,
-        document_id: doc?.id,
-        exemplaire_id: returnLoan.exemplaire_id,
         return_date: today.toISOString(),
         book_condition: condition,
         notes: notes || null
@@ -372,8 +364,8 @@
                     <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                     {loans.map((loan) => {
                         const member = first(loan.members)
-                        const doc = first(loan.documents)
                         const exemplaire = first(loan.exemplaires)
+                        const doc = exemplaire ? first(exemplaire.documents) : null
                         const isOverdue = new Date(loan.due_date) < today
 
                         return (
@@ -434,7 +426,7 @@
                 <CardContent className="space-y-4">
                 <div>
                     <p className="font-semibold text-slate-900 dark:text-white">
-                    {first(returnLoan.documents)?.title}
+                    {first(returnLoan.exemplaires)?.documents?.[0]?.title}
                     </p>
                     <Badge variant="outline" className="font-mono text-xs mt-1">
                     {first(returnLoan.exemplaires)?.barcode}

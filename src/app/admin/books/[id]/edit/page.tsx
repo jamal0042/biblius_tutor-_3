@@ -80,14 +80,15 @@
     const fetchBook = useCallback(async () => {
         setLoading(true)
 
-        const [{ data, error }, { data: documentAuthors, error: authorsError }, { data: exemplaireData }] = await Promise.all([
+        const [{ data, error }, { data: documentAuthors, error: authorsError }, { data: exemplaireData }, { count: exemplaireCount }] = await Promise.all([
         supabase
             .from("documents")
-            .select("id, title, isbn, issn, doi, edition, collection, publisher, year, type, language, pages, description, total_exemplaires, digital_url, cote_dewey, cote_complete")
+            .select("id, title, isbn, issn, doi, edition, collection, publisher, year, type, language, pages, description, digital_url, cote_dewey, cote_complete")
             .eq("id", bookId)
             .single(),
         supabase.from("document_auteurs").select("author_order, role, auteurs(name)").eq("document_id", bookId).order("author_order"),
         supabase.from("exemplaires").select("location_id").eq("document_id", bookId).limit(1),
+        supabase.from("exemplaires").select("*", { count: "exact", head: true }).eq("document_id", bookId),
         ])
 
         if (error || authorsError || !data) {
@@ -124,7 +125,7 @@
         language: data.language || "fr",
         pages: data.pages?.toString() || "",
         description: data.description || "",
-        total_exemplaires: Math.max(1, Number(data.total_exemplaires ?? 1)),
+        total_exemplaires: Math.max(1, Number(exemplaireCount ?? 1)),
         digital_url: data.digital_url || "",
         has_digital: Boolean(data.digital_url),
         })
@@ -175,13 +176,10 @@
             language: formData.language,
             pages: parseInt(formData.pages) || null,
             description: formData.description || null,
-            total_exemplaires: safeTotal,
             cote_dewey: cote_dewey || null,
             dewey_code: cote_dewey || null,
             cote_complete: genererCoteComplete(cote_dewey || null, contributors[0]?.name || "", formData.year) || null,
             digital_url: formData.has_digital ? formData.digital_url : null,
-            total_acces_numeriques: formData.has_digital ? 1 : 0,
-            acces_numeriques_disponibles: formData.has_digital ? 1 : 0,
             })
             .eq("id", bookId)
 

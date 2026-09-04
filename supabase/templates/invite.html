@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Invitation à rejoindre Biblius</title>
+  </head>
+  <body style="margin:0;padding:0;background-color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background-color:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;">
+            <!-- Header bleu -->
+            <tr>
+              <td style="background-color:#2563eb;padding:32px 32px;text-align:center;">
+                <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;">Biblius</h1>
+                <p style="margin:8px 0 0 0;color:#dbeafe;font-size:14px;">Système de gestion et de bibliothèque numérique</p>
+              </td>
+            </tr>
+            <!-- Corps -->
+            <tr>
+              <td style="padding:32px;">
+                <p style="margin:0 0 16px 0;color:#0f172a;font-size:16px;">Bonjour,</p>
+                <p style="margin:0 0 16px 0;color:#334155;font-size:15px;line-height:1.6;">
+                  Vous avez été invité(e) à rejoindre <strong style="color:#2563eb;">Biblius</strong>,
+                  le système de gestion et de bibliothèque numérique.
+                </p>
+                <p style="margin:0 0 24px 0;color:#334155;font-size:15px;line-height:1.6;">
+                  Votre compte a été préparé avec l&apos;adresse :
+                </p>
+                <p style="margin:0 0 24px 0;padding:14px 16px;background-color:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;color:#1d4ed8;font-size:15px;font-weight:600;text-align:center;">
+                  {{ .Email }}
+                </p>
+                <p style="margin:0 0 24px 0;color:#334155;font-size:15px;line-height:1.6;">
+                  Cliquez sur le bouton ci-dessous pour activer votre compte et accéder à votre espace Biblius :
+                </p>
+                <!-- Bouton -->
+                <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:0 0 24px 0;">
+                  <tr>
+                    <td align="center">
+                      <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:14px 32px;background-color:#f59e0b;color:#ffffff;text-decoration:none;font-size:16px;font-weight:700;border-radius:8px;">
+                        Activer mon compte
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:0 0 16px 0;color:#64748b;font-size:14px;line-height:1.6;">
+                  Votre invitation est valable pendant une durée limitée.
+                </p>
+                <p style="margin:0 0 16px 0;color:#64748b;font-size:14px;line-height:1.6;">
+                  Si vous n&apos;êtes pas à l&apos;origine de cette demande, vous pouvez ignorer cet email.
+                </p>
+              </td>
+            </tr>
+            <!-- Pied de page -->
+            <tr>
+              <td style="padding:24px 32px;background-color:#f8fafc;border-top:1px solid #e2e8f0;">
+                <p style="margin:0;color:#64748b;font-size:13px;">Cordialement,</p>
+                <p style="margin:4px 0 0 0;color:#0f172a;font-size:13px;font-weight:600;">L&apos;équipe Biblius</p>
+                <p style="margin:12px 0 0 0;color:#94a3b8;font-size:12px;">
+                  <a href="{{ .SiteURL }}" style="color:#2563eb;text-decoration:none;">Biblius</a>
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

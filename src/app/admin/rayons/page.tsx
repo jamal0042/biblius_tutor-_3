@@ -89,21 +89,33 @@ import {
         )
     }
 
-    const { data: documents } = await supabase
+    const [{ data: documents }, { data: exemplaires }] = await Promise.all([
+        supabase
         .from("documents")
         .select(`
         id,
         title,
         cote_dewey,
         cote_complete,
-        exemplaires_disponibles,
-        total_exemplaires,
         auteurs (name)
         `)
         .not("cote_dewey", "is", null)
-        .order("cote_dewey", { ascending: true })
+        .order("cote_dewey", { ascending: true }),
+        supabase.from("exemplaires").select("document_id, status"),
+    ])
 
     const allDocs = (documents || []) as unknown as DocumentWithCote[]
+
+    const totalByDoc = new Map<string, number>()
+    const availByDoc = new Map<string, number>()
+    for (const ex of (exemplaires || []) as Array<{ document_id: string; status: string }>) {
+    totalByDoc.set(ex.document_id, (totalByDoc.get(ex.document_id) || 0) + 1)
+    if (ex.status === "available") availByDoc.set(ex.document_id, (availByDoc.get(ex.document_id) || 0) + 1)
+    }
+    for (const doc of allDocs) {
+    doc.total_exemplaires = totalByDoc.get(doc.id) || 0
+    doc.exemplaires_disponibles = availByDoc.get(doc.id) || 0
+    }
 
     // Grouper par classe Dewey principale (3 premiers chiffres)
     const livresParClasse = DEWEY_CLASSES.map((classe) => {

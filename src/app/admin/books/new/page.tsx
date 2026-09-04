@@ -692,22 +692,6 @@
                     formData.has_digital
                     ? uploadedDigitalUrl
                     : null,
-
-                total_acces_numeriques:
-                    formData.has_digital ? 1 : 0,
-
-                acces_numeriques_disponibles:
-                    formData.has_digital ? 1 : 0,
-
-                total_exemplaires:
-                    hasPhysical
-                    ? formData.total_exemplaires
-                    : 0,
-
-                exemplaires_disponibles:
-                    hasPhysical
-                    ? formData.total_exemplaires
-                    : 0,
                 })
                 .select()
                 .single()

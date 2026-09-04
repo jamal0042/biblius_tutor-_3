@@ -66,7 +66,14 @@ function FirstLoginForm({ member }: { member: NonNullable<ReturnType<typeof useA
 
     const { error: memberError } = await supabase
       .from("members")
-      .update({ first_name: firstName, last_name: lastName, updated_at: new Date().toISOString() })
+      .update({
+        first_name: firstName,
+        last_name: lastName,
+        status: "active",
+        invite_status: "accepted",
+        invite_accepted_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", member.id)
 
     if (memberError) {

@@ -1,24 +1,41 @@
-    "use client"
+"use client"
 
-    import { useState } from "react"
-    import { createClient } from "@/lib/supabase/client"
-    import { UserPlus, Loader2, ArrowLeft, Mail, Phone, User, Briefcase, MapPin, Calendar, GraduationCap, Copy, Check } from "lucide-react"
-    import { Button } from "@/components/ui/button"
-    import { Input } from "@/components/ui/input"
-    import { Label } from "@/components/ui/label"
-    import { Card, CardContent } from "@/components/ui/card"
-    import { Textarea } from "@/components/ui/textarea"
-    import Link from "next/link"
+import { useCallback, useEffect, useState } from "react"
+import {
+    UserPlus, Loader2, ArrowLeft, Mail, Phone, Briefcase, MapPin, Calendar,
+    GraduationCap, RotateCcw, Ban, Inbox, CheckCircle2, XCircle, Hourglass,
+} from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent } from "@/components/ui/card"
+import { Textarea } from "@/components/ui/textarea"
+import { Badge } from "@/components/ui/badge"
+import { ROLE_LABELS, type Role } from "@/lib/roles"
+import Link from "next/link"
 
-    type MemberRole = "student" | "teacher" | "external"
+type InviteStatus = "pending" | "accepted" | "expired" | "revoked"
 
-    interface FormData {
+interface Invitation {
+    id: string
+    first_name: string | null
+    last_name: string | null
+    email: string
+    role: Role
+    status: InviteStatus
+    sent_at: string | null
+    expires_at: string | null
+    accepted_at: string | null
+    created_at: string
+}
+
+interface FormData {
     firstName: string
     lastName: string
     email: string
     phone: string
     matricule: string
-    role: MemberRole
+    role: Role
     department: string
     birthDate: string
     address: string
@@ -26,214 +43,149 @@
     level: string
     speciality: string
     notes: string
-    }
+}
 
-    export default function InviteMemberPage() {
-    const supabase = createClient()
+const emptyForm: FormData = {
+    firstName: "", lastName: "", email: "", phone: "", matricule: "",
+    role: "student", department: "", birthDate: "", address: "", city: "",
+    level: "", speciality: "", notes: "",
+}
+
+const STATUS_META: Record<InviteStatus, { label: string; className: string; icon: React.ElementType }> = {
+    pending: { label: "En attente", className: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400", icon: Hourglass },
+    accepted: { label: "Acceptée", className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400", icon: CheckCircle2 },
+    expired: { label: "Expirée", className: "bg-slate-100 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400", icon: XCircle },
+    revoked: { label: "Révoquée", className: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400", icon: Ban },
+}
+
+export default function InviteMemberPage() {
+    const [formData, setFormData] = useState<FormData>(emptyForm)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
-    const [success, setSuccess] = useState(false)
-    const [generatedPassword, setGeneratedPassword] = useState("")
-    const [copied, setCopied] = useState(false)
-
-    const [formData, setFormData] = useState<FormData>({
-        firstName: "",
-        lastName: "",
-        email: "",
-        phone: "",
-        matricule: "",
-        role: "student",
-        department: "",
-        birthDate: "",
-        address: "",
-        city: "",
-        level: "",
-        speciality: "",
-        notes: ""
-    })
+    const [success, setSuccess] = useState<string | null>(null)
+    const [invitations, setInvitations] = useState<Invitation[]>([])
+    const [listLoading, setListLoading] = useState(true)
+    const [actionId, setActionId] = useState<string | null>(null)
+    const [revokeConfirmId, setRevokeConfirmId] = useState<string | null>(null)
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value })
     }
 
-    const generatePassword = () => {
-        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$"
-        let password = ""
-        for (let i = 0; i < 12; i++) {
-        password += chars.charAt(Math.floor(Math.random() * chars.length))
+    const fetchInvitations = useCallback(async () => {
+        setListLoading(true)
+        try {
+        const res = await fetch("/api/invitations")
+        const json = await res.json()
+        if (res.ok) {
+            setInvitations(json.invitations || [])
         }
-        return password
-    }
-
-    const copyPassword = async () => {
-        await navigator.clipboard.writeText(generatedPassword)
-        setCopied(true)
-        setTimeout(() => setCopied(false), 2000)
-    }
-
-    const getRoleLimits = (role: MemberRole) => {
-        switch (role) {
-        case "teacher":
-            return { max_loans: 10, max_loans_duration: 30, max_digital_loans: 5 }
-        case "student":
-            return { max_loans: 5, max_loans_duration: 15, max_digital_loans: 3 }
-        case "external":
-            return { max_loans: 3, max_loans_duration: 7, max_digital_loans: 1 }
+        } catch {
+        // ignore
+        } finally {
+        setListLoading(false)
         }
-    }
+    }, [])
+
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        void fetchInvitations()
+    }, [fetchInvitations])
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         setLoading(true)
         setError(null)
-        setSuccess(false)
-
-        const password = generatePassword()
+        setSuccess(null)
 
         try {
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-            email: formData.email,
-            password: password,
-            options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback?next=/premiere-connexion`,
-            data: {
-                first_name: formData.firstName,
-                last_name: formData.lastName,
-                is_invited: true,
-            }
-            }
-        })
-
-        if (authError) throw authError
-        if (!authData.user) throw new Error("Erreur lors de la création du compte")
-
-        const roleLimits = getRoleLimits(formData.role)
-
-        const { error: memberError } = await supabase.from('members').insert({
-            id: authData.user.id,
+        const res = await fetch("/api/invitations", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
             email: formData.email,
             first_name: formData.firstName,
             last_name: formData.lastName,
-            phone: formData.phone || null,
-            matricule: formData.matricule || null,
             role: formData.role,
-            department: formData.department || null,
-            birth_date: formData.birthDate || null,
-            address: formData.address || null,
-            city: formData.city || null,
-            level: formData.level || null,
-            speciality: formData.speciality || null,
-            notes: formData.notes || null,
-            status: 'active',
-            max_loans: roleLimits.max_loans,
-            max_loans_duration: roleLimits.max_loans_duration,
-            max_digital_loans: roleLimits.max_digital_loans,
-            email_notifications: true,
-            sms_notifications: false,
+            phone: formData.phone,
+            matricule: formData.matricule,
+            department: formData.department,
+            birth_date: formData.birthDate,
+            address: formData.address,
+            city: formData.city,
+            level: formData.level,
+            speciality: formData.speciality,
+            notes: formData.notes,
+            }),
         })
+        const json = await res.json()
 
-        if (memberError) throw memberError
+        if (!res.ok) {
+            setError(json.error || "Erreur lors de l'invitation.")
+            return
+        }
 
-        setGeneratedPassword(password)
-        setSuccess(true)
-        setLoading(false)
-        } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : "Erreur lors de la création du compte."
-        setError(errorMessage)
+        setSuccess(json.re_invited
+            ? `Une nouvelle invitation a été envoyée à ${formData.email}.`
+            : `Invitation envoyée avec succès à ${formData.email}. Un email de confirmation lui a été envoyé.`
+        )
+        setFormData(emptyForm)
+        void fetchInvitations()
+        } catch {
+        setError("Une erreur inattendue est survenue.")
+        } finally {
         setLoading(false)
         }
     }
 
-    if (success) {
-        return (
-        <div className="max-w-2xl mx-auto space-y-6">
-            <Card className="bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900">
-            <CardContent className="p-8 text-center">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center">
-                <UserPlus className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <h2 className="text-2xl font-bold text-emerald-900 dark:text-emerald-400 mb-2">
-                Compte créé avec succès !
-                </h2>
-                <p className="text-emerald-700 dark:text-emerald-300 mb-6">
-                Le compte de <strong>{formData.firstName} {formData.lastName}</strong> a été créé. Un email de confirmation lui a été envoyé.
-                </p>
+    const handleResend = async (inv: Invitation) => {
+        setActionId(inv.id)
+        setError(null)
+        setSuccess(null)
+        try {
+        const res = await fetch(`/api/invitations/${inv.id}`, { method: "PATCH" })
+        const json = await res.json()
+        if (!res.ok) {
+            setError(json.error || "Erreur lors du renvoi.")
+            return
+        }
+        setSuccess(`Invitation renvoyée à ${inv.email}.`)
+        void fetchInvitations()
+        } catch {
+        setError("Une erreur est survenue lors du renvoi.")
+        } finally {
+        setActionId(null)
+        }
+    }
 
-                <div className="bg-white dark:bg-slate-900 rounded-lg p-6 text-left space-y-4 border border-emerald-200 dark:border-emerald-900">
-                <div>
-                    <Label className="text-xs text-slate-500">Email de connexion</Label>
-                    <p className="font-mono text-sm text-slate-900 dark:text-white">{formData.email}</p>
-                </div>
-                
-                <div>
-                    <Label className="text-xs text-slate-500">Mot de passe temporaire</Label>
-                    <div className="flex items-center gap-2 mt-1">
-                    <p className="font-mono text-sm text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-3 py-2 rounded flex-1">
-                        {generatedPassword}
-                    </p>
-                    <Button
-                        size="icon"
-                        variant="outline"
-                        onClick={copyPassword}
-                        className="shrink-0"
-                    >
-                        {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                    </Button>
-                    </div>
-                    <p className="text-xs text-slate-500 mt-2">
-                        Notez ce mot de passe et communiquez-le à l &apos utilisateur. Il devra le changer à sa première connexion.
-                    </p>
-                </div>
+    const handleRevoke = async (inv: Invitation) => {
+        setActionId(inv.id)
+        setError(null)
+        setSuccess(null)
+        try {
+        const res = await fetch(`/api/invitations/${inv.id}`, { method: "DELETE" })
+        const json = await res.json()
+        if (!res.ok) {
+            setError(json.error || "Erreur lors de la révocation.")
+            return
+        }
+        setSuccess(`Invitation de ${inv.email} révoquée.`)
+        setRevokeConfirmId(null)
+        void fetchInvitations()
+        } catch {
+        setError("Une erreur est survenue lors de la révocation.")
+        } finally {
+        setActionId(null)
+        }
+    }
 
-                <div>
-                    <Label className="text-xs text-slate-500">Prochaine étape</Label>
-                    <p className="text-sm text-slate-600 dark:text-slate-300">
-                    L &apos utilisateur doit ouvrir le lien reçu par email pour définir son nouveau mot de passe et compléter son profil.
-                    </p>
-                </div>
-                </div>
-
-                <div className="flex gap-3 mt-6">
-                <Button
-                    onClick={() => {
-                    setSuccess(false)
-                    setGeneratedPassword("")
-                    setFormData({ 
-                        firstName: "", 
-                        lastName: "", 
-                        email: "", 
-                        phone: "", 
-                        matricule: "", 
-                        role: "student", 
-                        department: "",
-                        birthDate: "",
-                        address: "",
-                        city: "",
-                        level: "",
-                        speciality: "",
-                        notes: ""
-                    })
-                    }}
-                    className="w-full bg-amber-500 hover:bg-amber-600 text-white"
-                >
-                    Créer un autre compte
-                </Button>
-                </div>
-
-                <Link href="/admin/membres/online">
-                <Button variant="ghost" className="mt-4 w-full">
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Retour à la liste des membres
-                </Button>
-                </Link>
-            </CardContent>
-            </Card>
-        </div>
-        )
+    const formatDate = (date: string | null) => {
+        if (!date) return "—"
+        return new Date(date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })
     }
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6">
+        <div className="max-w-5xl mx-auto space-y-6">
         <div className="flex items-center gap-4">
             <Link href="/admin/membres/online">
             <Button variant="ghost" size="icon">
@@ -241,244 +193,135 @@
             </Button>
             </Link>
             <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Inviter un nouveau membre</h1>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Invitations</h1>
             <p className="text-slate-500 dark:text-slate-400 mt-1">
-                Créez un compte pour un étudiant, enseignant ou lecteur externe.
+                Invitez une personne à rejoindre Biblius. Son compte est préparé avec le rôle choisi.
             </p>
             </div>
         </div>
 
         {error && (
             <Card className="border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/20">
-            <CardContent className="p-4 text-sm text-red-700 dark:text-red-400">
-                {error}
-            </CardContent>
+            <CardContent className="p-4 text-sm text-red-700 dark:text-red-400">{error}</CardContent>
             </Card>
         )}
 
+        {success && (
+            <Card className="border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/20">
+            <CardContent className="p-4 text-sm text-emerald-700 dark:text-emerald-400">{success}</CardContent>
+            </Card>
+        )}
+
+        {/* ==== FORMULAIRE D'INVITATION ==== */}
         <form onSubmit={handleSubmit} className="space-y-6">
-            {/* INFORMATIONS PERSONNELLES */}
             <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
             <CardContent className="p-6 space-y-6">
                 <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                <User className="w-5 h-5 text-amber-500" />
-                Informations personnelles
+                <UserPlus className="w-5 h-5 text-amber-500" />
+                Nouvelle invitation
                 </h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                     <Label htmlFor="firstName">Prénom *</Label>
-                    <Input 
-                    id="firstName" 
-                    name="firstName" 
-                    value={formData.firstName} 
-                    onChange={handleChange} 
-                    placeholder="Jean" 
-                    required 
-                    />
+                    <Input id="firstName" name="firstName" value={formData.firstName} onChange={handleChange} placeholder="Jean" required />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="lastName">Nom *</Label>
-                    <Input 
-                    id="lastName" 
-                    name="lastName" 
-                    value={formData.lastName} 
-                    onChange={handleChange} 
-                    placeholder="Dupont" 
-                    required 
-                    />
+                    <Input id="lastName" name="lastName" value={formData.lastName} onChange={handleChange} placeholder="Kabila" required />
                 </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                    <Label htmlFor="birthDate">Date de naissance</Label>
+                    <Label htmlFor="email">Email *</Label>
                     <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <Input 
-                        id="birthDate" 
-                        name="birthDate" 
-                        type="date"
-                        value={formData.birthDate} 
-                        onChange={handleChange} 
-                        className="pl-10" 
-                    />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Input id="email" name="email" type="email" value={formData.email} onChange={handleChange} placeholder="jean.kabila@exemple.com" className="pl-10" required />
                     </div>
                 </div>
                 <div className="space-y-2">
-                    <Label htmlFor="matricule">Matricule / N° d&apo inscription</Label>
+                    <Label htmlFor="phone">Téléphone</Label>
+                    <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Input id="phone" name="phone" type="tel" value={formData.phone} onChange={handleChange} placeholder="+237 6XX XXX XXX" className="pl-10" />
+                    </div>
+                </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                    <Label htmlFor="matricule">Matricule / N° d&apos;inscription</Label>
                     <div className="relative">
                     <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <Input 
-                        id="matricule" 
-                        name="matricule" 
-                        value={formData.matricule} 
-                        onChange={handleChange} 
-                        placeholder="MAT2024001" 
-                        className="pl-10" 
-                    />
+                    <Input id="matricule" name="matricule" value={formData.matricule} onChange={handleChange} placeholder="MAT2024001" className="pl-10" />
                     </div>
                 </div>
-                </div>
-
                 <div className="space-y-2">
-                <Label htmlFor="email">Email *</Label>
-                <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <Input 
-                    id="email" 
-                    name="email" 
-                    type="email" 
-                    value={formData.email} 
-                    onChange={handleChange} 
-                    placeholder="jean.dupont@exemple.com" 
-                    className="pl-10" 
-                    required 
-                    />
+                    <Label htmlFor="department">Département / Filière</Label>
+                    <Input id="department" name="department" value={formData.department} onChange={handleChange} placeholder="Informatique, Médecine, Droit..." />
                 </div>
                 </div>
 
                 <div className="space-y-2">
-                <Label htmlFor="phone">Téléphone</Label>
-                <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <Input 
-                    id="phone" 
-                    name="phone" 
-                    type="tel" 
-                    value={formData.phone} 
-                    onChange={handleChange} 
-                    placeholder="+237 6XX XXX XXX" 
-                    className="pl-10" 
-                    />
-                </div>
-                </div>
-            </CardContent>
-            </Card>
-
-            {/* ADRESSE */}
-            <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-            <CardContent className="p-6 space-y-6">
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-amber-500" />
-                Adresse de résidence
-                </h2>
-
-                <div className="space-y-2">
-                <Label htmlFor="address">Adresse</Label>
-                <Textarea 
-                    id="address" 
-                    name="address" 
-                    value={formData.address} 
-                    onChange={handleChange} 
-                    placeholder="Quartier, rue, numéro..."
-                    rows={2}
-                />
+                <Label htmlFor="role">Rôle *</Label>
+                <select
+                    id="role"
+                    name="role"
+                    value={formData.role}
+                    onChange={handleChange}
+                    className="flex h-10 w-full rounded-md border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm text-slate-900 dark:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+                >
+                    {Object.entries(ROLE_LABELS).map(([key, label]) => (
+                    <option key={key} value={key}>{label}</option>
+                    ))}
+                </select>
                 </div>
 
-                <div className="space-y-2">
-                <Label htmlFor="city">Ville</Label>
-                <Input 
-                    id="city" 
-                    name="city" 
-                    value={formData.city} 
-                    onChange={handleChange} 
-                    placeholder="Yaoundé, Douala, Bafoussam..." 
-                />
+                {["student", "teacher"].includes(formData.role) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {formData.role === "student" && (
+                    <div className="space-y-2">
+                        <Label htmlFor="level">Niveau d&apos;études</Label>
+                        <div className="relative">
+                        <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Input id="level" name="level" value={formData.level} onChange={handleChange} placeholder="L1, L2, M1, Doctorat..." className="pl-10" />
+                        </div>
+                    </div>
+                    )}
+                    {formData.role === "teacher" && (
+                    <div className="space-y-2">
+                        <Label htmlFor="speciality">Spécialité / Matière</Label>
+                        <Input id="speciality" name="speciality" value={formData.speciality} onChange={handleChange} placeholder="Mathématiques, Physique..." />
+                    </div>
+                    )}
+                    <div className="space-y-2">
+                    <Label htmlFor="birthDate">Date de naissance</Label>
+                    <div className="relative">
+                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Input id="birthDate" name="birthDate" type="date" value={formData.birthDate} onChange={handleChange} className="pl-10" />
+                    </div>
+                    </div>
                 </div>
-            </CardContent>
-            </Card>
-
-            {/* TYPE DE MEMBRE */}
-            <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-            <CardContent className="p-6 space-y-6">
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Type de membre *</h2>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {[
-                    { value: "student", label: "Étudiant", desc: "5 emprunts max, 15 jours" },
-                    { value: "teacher", label: "Enseignant", desc: "10 emprunts max, 30 jours" },
-                    { value: "external", label: "Lecteur externe", desc: "3 emprunts max, 7 jours" }
-                ].map((type) => (
-                    <button
-                    key={type.value}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, role: type.value as MemberRole })}
-                    className={`p-4 rounded-lg border text-left transition-all ${
-                        formData.role === type.value
-                        ? "border-amber-500 bg-amber-50 dark:bg-amber-500/10 ring-2 ring-amber-500/20"
-                        : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 hover:border-slate-300"
-                    }`}
-                    >
-                    <div className="font-semibold text-slate-900 dark:text-white text-sm">{type.label}</div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{type.desc}</div>
-                    </button>
-                ))}
-                </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                    <Label htmlFor="department">Département / Filière</Label>
-                    <Input 
-                    id="department" 
-                    name="department" 
-                    value={formData.department} 
-                    onChange={handleChange} 
-                    placeholder="Ex: Informatique, Médecine, Droit..." 
-                    />
-                </div>
-
-                {formData.role === "student" && (
-                    <div className="space-y-2">
-                    <Label htmlFor="level">Niveau d &apos études</Label>
+                    <Label htmlFor="address">Adresse</Label>
                     <div className="relative">
-                        <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <Input 
-                        id="level" 
-                        name="level" 
-                        value={formData.level} 
-                        onChange={handleChange} 
-                        placeholder="L1, L2, M1, Doctorat..." 
-                        className="pl-10"
-                        />
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Input id="address" name="address" value={formData.address} onChange={handleChange} placeholder="Quartier, rue, numéro..." className="pl-10" />
                     </div>
-                    </div>
-                )}
-
-                {formData.role === "teacher" && (
-                    <div className="space-y-2">
-                    <Label htmlFor="speciality">Spécialité / Matière</Label>
-                    <Input 
-                        id="speciality" 
-                        name="speciality" 
-                        value={formData.speciality} 
-                        onChange={handleChange} 
-                        placeholder="Ex: Mathématiques, Physique..." 
-                    />
-                    </div>
-                )}
                 </div>
-            </CardContent>
-            </Card>
-
-            {/* NOTES */}
-            <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-            <CardContent className="p-6 space-y-6">
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Notes administratives</h2>
+                <div className="space-y-2">
+                    <Label htmlFor="city">Ville</Label>
+                    <Input id="city" name="city" value={formData.city} onChange={handleChange} placeholder="Yaoundé, Douala..." />
+                </div>
+                </div>
 
                 <div className="space-y-2">
                 <Label htmlFor="notes">Notes internes (optionnel)</Label>
-                <Textarea 
-                    id="notes" 
-                    name="notes" 
-                    value={formData.notes} 
-                    onChange={handleChange} 
-                    placeholder="Informations complémentaires, remarques..."
-                    rows={3}
-                />
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Ces notes ne sont visibles que par les administrateurs et bibliothécaires.
-                </p>
+                <Textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={2} placeholder="Informations complémentaires..." />
                 </div>
             </CardContent>
             </Card>
@@ -487,12 +330,125 @@
             <Link href="/admin/membres/online">
                 <Button type="button" variant="outline">Annuler</Button>
             </Link>
-            <Button type="submit" disabled={loading} className="bg-amber-500 hover:bg-amber-600 text-white min-w-[200px]">
+            <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white min-w-[220px]">
                 {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <UserPlus className="w-4 h-4 mr-2" />}
-                {loading ? "Création en cours..." : "Créer le compte"}
+                {loading ? "Envoi en cours..." : "Envoyer l&apos;invitation"}
             </Button>
             </div>
         </form>
+
+        {/* ==== LISTE DES INVITATIONS ==== */}
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+            <CardContent className="p-6">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-4">
+                <Inbox className="w-5 h-5 text-amber-500" />
+                Invitations envoyées
+                <Badge className="ml-2 bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400">{invitations.length}</Badge>
+            </h2>
+
+            {listLoading ? (
+                <div className="flex items-center justify-center py-10">
+                <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
+                </div>
+            ) : invitations.length === 0 ? (
+                <div className="py-10 text-center">
+                <Inbox className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-700" />
+                <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">Aucune invitation envoyée pour le moment.</p>
+                </div>
+            ) : (
+                <div className="overflow-x-auto">
+                <table className="w-full min-w-[800px]">
+                    <thead className="bg-slate-50 dark:bg-slate-800">
+                    <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Utilisateur</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Email</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Rôle</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Statut</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Envoyée</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Expire</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                    {invitations.map((inv) => {
+                        const meta = STATUS_META[inv.status] || STATUS_META.pending
+                        const StatusIcon = meta.icon
+                        const isPending = inv.status === "pending"
+                        const isBusy = actionId === inv.id
+                        return (
+                        <tr key={inv.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white">
+                            {inv.first_name} {inv.last_name}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">{inv.email}</td>
+                            <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{ROLE_LABELS[inv.role] || inv.role}</td>
+                            <td className="px-4 py-3 text-sm">
+                            <Badge className={meta.className}>
+                                <StatusIcon className="w-3 h-3 mr-1" />
+                                {meta.label}
+                            </Badge>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">{formatDate(inv.sent_at)}</td>
+                            <td className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">{formatDate(inv.expires_at)}</td>
+                            <td className="px-4 py-3 text-sm">
+                            {isPending ? (
+                                <div className="flex gap-2">
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={isBusy}
+                                    onClick={() => handleResend(inv)}
+                                    className="border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-950"
+                                >
+                                    {isBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3 mr-1" />} Renvoyer
+                                </Button>
+                                {revokeConfirmId === inv.id ? (
+                                    <Button
+                                    size="sm"
+                                    className="bg-red-600 hover:bg-red-700 text-white"
+                                    disabled={isBusy}
+                                    onClick={() => handleRevoke(inv)}
+                                    >
+                                    Confirmer
+                                    </Button>
+                                ) : (
+                                    <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={isBusy}
+                                    onClick={() => setRevokeConfirmId(inv.id)}
+                                    className="border-red-300 text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950"
+                                    >
+                                    <Ban className="w-3 h-3 mr-1" /> Révoquer
+                                    </Button>
+                                )}
+                                </div>
+                            ) : (
+                                <span className="text-xs text-slate-400">—</span>
+                            )}
+                            </td>
+                        </tr>
+                        )
+                    })}
+                    </tbody>
+                </table>
+                </div>
+            )}
+            </CardContent>
+        </Card>
+
+        {revokeConfirmId && (
+            <Card className="border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/20">
+            <CardContent className="p-4 flex items-center justify-between gap-3">
+                <p className="text-sm text-red-700 dark:text-red-400">
+                Confirmer la révocation de cette invitation ? L&apos;utilisateur ne pourra plus activer son compte avec ce lien.
+                </p>
+                <div className="flex gap-2 shrink-0">
+                <Button size="sm" variant="outline" onClick={() => setRevokeConfirmId(null)}>Annuler</Button>
+                </div>
+            </CardContent>
+            </Card>
+        )}
         </div>
     )
-    }
+}

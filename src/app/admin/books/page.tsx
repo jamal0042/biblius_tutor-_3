@@ -32,27 +32,41 @@
 
     const fetchBooks = useCallback(async () => {
         setLoading(true)
-        const { data, error } = await supabase
-        .from("documents")
-        .select("id, title, type, cote_dewey, cote_complete, total_exemplaires, exemplaires_disponibles, digital_url, created_at, document_auteurs(author_order, auteurs(name))")
-        .order("created_at", { ascending: false })
+        const [docRes, exRes] = await Promise.all([
+        supabase
+            .from("documents")
+            .select("id, title, type, cote_dewey, cote_complete, digital_url, created_at, document_auteurs(author_order, auteurs(name))")
+            .order("created_at", { ascending: false }),
+        supabase.from("exemplaires").select("document_id, status"),
+        ])
+
+        const { data, error } = docRes
+        const exemplaires = exRes.data || []
 
         if (!error && data) {
+        const totalByDoc = new Map<string, number>()
+        const availByDoc = new Map<string, number>()
+        for (const ex of exemplaires as Array<{ document_id: string; status: string }>) {
+            totalByDoc.set(ex.document_id, (totalByDoc.get(ex.document_id) || 0) + 1)
+            if (ex.status === "available") availByDoc.set(ex.document_id, (availByDoc.get(ex.document_id) || 0) + 1)
+        }
+
         const mappedBooks = (data as Array<Record<string, unknown>>).map((doc) => {
             const rawContributors = (doc as { document_auteurs?: Array<{ author_order?: number; auteurs?: { name?: string | null } | null }> }).document_auteurs
             const sortedContributors = (rawContributors || [])
             .sort((a, b) => (a.author_order ?? 0) - (b.author_order ?? 0))
             const authorNames = sortedContributors.map((c) => c.auteurs?.name).filter(Boolean).join(", ")
 
+            const docId = String(doc.id)
             return {
-            id: String(doc.id),
+            id: docId,
             title: String(doc.title ?? ""),
             author: authorNames || "Auteur inconnu",
             type: String(doc.type ?? "book"),
             cote_dewey: (doc.cote_dewey as string | null) ?? null,
             cote_complete: (doc.cote_complete as string | null) ?? null,
-            total_exemplaires: Number(doc.total_exemplaires ?? 0),
-            exemplaires_disponibles: Number(doc.exemplaires_disponibles ?? 0),
+            total_exemplaires: totalByDoc.get(docId) || 0,
+            exemplaires_disponibles: availByDoc.get(docId) || 0,
             digital_url: (doc.digital_url as string | null) ?? null,
             created_at: String(doc.created_at ?? "")
             } satisfies Document

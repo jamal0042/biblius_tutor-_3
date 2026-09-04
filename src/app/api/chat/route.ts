@@ -49,7 +49,6 @@
     id: string
     title: string
     type: string
-    exemplaires_disponibles: number | null
     auteurs: AuthorRow[] | AuthorRow | null
     }
 
@@ -126,7 +125,7 @@
             // Recherche par TITRE
             const { data: titleMatches } = await supabase
                 .from("documents")
-                .select(`id, title, type, exemplaires_disponibles, auteurs (name)`)
+                .select(`id, title, type, auteurs (name)`)
                 .ilike("title", `%${term}%`)
                 .limit(limit)
             books = titleMatches || []
@@ -150,7 +149,7 @@
                 if (docIds.length > 0) {
                     const { data: authorBooks } = await supabase
                     .from("documents")
-                    .select(`id, title, type, exemplaires_disponibles, auteurs (name)`)
+                    .select(`id, title, type, auteurs (name)`)
                     .in("id", docIds)
                     .limit(limit - books.length)
                     books = [...books, ...(authorBooks || [])]
@@ -160,17 +159,30 @@
             } else {
             const { data } = await supabase
                 .from("documents")
-                .select(`id, title, type, exemplaires_disponibles, auteurs (name)`)
+                .select(`id, title, type, auteurs (name)`)
                 .order("title", { ascending: true })
                 .limit(limit)
             books = data || []
+            }
+
+            const bookIds = [...new Set(books.map((b) => b.id))]
+            const availByDoc = new Map<string, number>()
+            if (bookIds.length > 0) {
+            const { data: availRows } = await supabase
+                .from("exemplaires")
+                .select("document_id")
+                .eq("status", "available")
+                .in("document_id", bookIds)
+            for (const row of (availRows || []) as Array<{ document_id: string }>) {
+                availByDoc.set(row.document_id, (availByDoc.get(row.document_id) || 0) + 1)
+            }
             }
 
             const livres = books.map((b) => ({
             type: "livre_physique",
             title: b.title,
             author: getAuthorName(b.auteurs),
-            available: (b.exemplaires_disponibles || 0) > 0,
+            available: (availByDoc.get(b.id) || 0) > 0,
             link: `/catalogue/${b.id}`,
             }))
 

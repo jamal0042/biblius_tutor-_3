@@ -22,17 +22,23 @@ export default async function BookDetailPage(props: { params: Promise<{ id: stri
     const bookId = params.id
     const supabase = await createServerSupabaseClient()
 
-    const { data: book, error } = await supabase
+    const [{ data: book, error }, { count: exemplaireCount }, { count: availableCount }] = await Promise.all([
+        supabase
         .from("documents")
         .select("*")
         .eq("id", bookId)
-        .single()
+        .single(),
+        supabase.from("exemplaires").select("*", { count: "exact", head: true }).eq("document_id", bookId),
+        supabase.from("exemplaires").select("*", { count: "exact", head: true }).eq("document_id", bookId).eq("status", "available"),
+    ])
 
     if (error || !book) {
         notFound()
     }
 
-    const isAvailable = (book.exemplaires_disponibles || 0) > 0
+    const totalExemplaires = exemplaireCount || 0
+    const exemplairesDisponibles = availableCount || 0
+    const isAvailable = exemplairesDisponibles > 0
 
     const { data: rawContributors } = await supabase
         .from("document_auteurs")
@@ -105,7 +111,7 @@ export default async function BookDetailPage(props: { params: Promise<{ id: stri
                 {book.year && <MetaItem icon={Calendar} label="Année" value={book.year.toString()} />}
                 {book.language && <MetaItem icon={Globe} label="Langue" value={book.language} />}
                 {book.pages && <MetaItem icon={Hash} label="Pages" value={book.pages.toString()} />}
-                <MetaItem icon={Users} label="Exemplaires" value={`${book.exemplaires_disponibles || 0}/${book.total_exemplaires || 0}`} />
+                <MetaItem icon={Users} label="Exemplaires" value={`${exemplairesDisponibles}/${totalExemplaires}`} />
             </div>
 
             {book.description && (
