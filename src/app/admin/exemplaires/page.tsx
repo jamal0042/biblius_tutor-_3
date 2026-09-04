@@ -333,10 +333,10 @@
                 <table className="w-full">
                     <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
                     <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Document</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Auteur</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Code-barres</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Statut</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Document</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Auteur</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Code-barres</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Statut</th>
                     </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
@@ -387,11 +387,11 @@
                 <table className="w-full">
                     <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
                     <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Document</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Exemplaire</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Membre</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Retour prévu</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Action</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Document</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Exemplaire</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Membre</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Retour prévu</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Action</th>
                     </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 dark:divide-slate-700">

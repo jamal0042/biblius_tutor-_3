@@ -139,12 +139,22 @@
                 .ilike("name", `%${term}%`)
 
                 if (authors && authors.length > 0) {
-                const { data: authorBooks } = await supabase
+                const authorIds = (authors as unknown as AuthorRow[]).map((a) => a.id)
+                const { data: docAuthors } = await supabase
+                    .from("document_auteurs")
+                    .select("document_id")
+                    .in("author_id", authorIds)
+
+                const docIds = [...new Set((docAuthors || []).map((da) => da.document_id))]
+
+                if (docIds.length > 0) {
+                    const { data: authorBooks } = await supabase
                     .from("documents")
                     .select(`id, title, type, exemplaires_disponibles, auteurs (name)`)
-                        .in("author_id", (authors as unknown as AuthorRow[]).map((a) => a.id))
+                    .in("id", docIds)
                     .limit(limit - books.length)
-                books = [...books, ...(authorBooks || [])]
+                    books = [...books, ...(authorBooks || [])]
+                }
                 }
             }
             } else {

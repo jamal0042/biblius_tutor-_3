@@ -1,8 +1,8 @@
-    import { createServerSupabaseClient } from "@/lib/supabase/server"
-    import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-    import { Badge } from "@/components/ui/badge"
-    import { Button } from "@/components/ui/button"
-    import {
+import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
     BookOpen,
     ArrowLeft,
     Library,
@@ -18,22 +18,34 @@
     Cog,
     Palette,
     Globe,
+    BookText,
     } from "lucide-react"
     import Link from "next/link"
 
-    // Classes Dewey principales avec ICÔNES LUCIDE (pas d'emojis)
-    const DEWEY_CLASSES = [
-    { code: "000", libelle: "Informatique, information, généralités", icon: Computer },
-    { code: "100", libelle: "Philosophie et psychologie", icon: Brain },
-    { code: "200", libelle: "Religion", icon: Church },
-    { code: "300", libelle: "Sciences sociales", icon: Users },
-    { code: "400", libelle: "Langues", icon: Languages },
-    { code: "500", libelle: "Sciences pures", icon: FlaskConical },
-    { code: "600", libelle: "Sciences appliquées, technologie", icon: Cog },
-    { code: "700", libelle: "Arts et loisirs", icon: Palette },
-    { code: "800", libelle: "Littérature", icon: BookOpen },
-    { code: "900", libelle: "Histoire et géographie", icon: Globe },
-    ]
+    const ROOT_ICONS: Record<string, React.ElementType> = {
+    "000": Computer,
+    "100": Brain,
+    "200": Church,
+    "300": Users,
+    "400": Languages,
+    "500": FlaskConical,
+    "600": Cog,
+    "700": Palette,
+    "800": BookOpen,
+    "900": Globe,
+    }
+
+    const DEFAULT_ICON = BookText
+
+    function getIconForCode(code: string): React.ElementType {
+    const root = code.substring(0, 3).padEnd(3, "0")
+    return ROOT_ICONS[root] || DEFAULT_ICON
+    }
+
+    interface DeweyClassRow {
+    code: string
+    libelle: string
+    }
 
     interface DocumentWithCote {
     id: string
@@ -48,7 +60,35 @@
     export default async function RayonsPage() {
     const supabase = await createServerSupabaseClient()
 
-    // Récupérer tous les documents avec une cote Dewey
+    const { data: deweyRows } = await supabase
+        .from("dewey_classes")
+        .select("code, libelle")
+        .order("code", { ascending: true })
+
+    const DEWEY_CLASSES: Array<{ code: string; libelle: string; icon: React.ElementType }> =
+        (deweyRows || []).map((row: DeweyClassRow) => ({
+        code: row.code,
+        libelle: row.libelle,
+        icon: getIconForCode(row.code),
+        }))
+
+    if (DEWEY_CLASSES.length === 0) {
+        DEWEY_CLASSES.push(
+        ...[
+            { code: "000", libelle: "Informatique, information, généralités", icon: Computer },
+            { code: "100", libelle: "Philosophie et psychologie", icon: Brain },
+            { code: "200", libelle: "Religion", icon: Church },
+            { code: "300", libelle: "Sciences sociales", icon: Users },
+            { code: "400", libelle: "Langues", icon: Languages },
+            { code: "500", libelle: "Sciences pures", icon: FlaskConical },
+            { code: "600", libelle: "Sciences appliquées, technologie", icon: Cog },
+            { code: "700", libelle: "Arts et loisirs", icon: Palette },
+            { code: "800", libelle: "Littérature", icon: BookOpen },
+            { code: "900", libelle: "Histoire et géographie", icon: Globe },
+        ]
+        )
+    }
+
     const { data: documents } = await supabase
         .from("documents")
         .select(`

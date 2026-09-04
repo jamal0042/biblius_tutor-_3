@@ -16,6 +16,8 @@
     title: string
     author: string
     type: string
+    cote_dewey: string | null
+    cote_complete: string | null
     total_exemplaires: number
     exemplaires_disponibles: number
     digital_url: string | null
@@ -32,20 +34,23 @@
         setLoading(true)
         const { data, error } = await supabase
         .from("documents")
-        .select("id, title, type, total_exemplaires, exemplaires_disponibles, digital_url, created_at, auteurs(name)")
+        .select("id, title, type, cote_dewey, cote_complete, total_exemplaires, exemplaires_disponibles, digital_url, created_at, document_auteurs(author_order, auteurs(name))")
         .order("created_at", { ascending: false })
 
         if (!error && data) {
         const mappedBooks = (data as Array<Record<string, unknown>>).map((doc) => {
-            const authorRelation = Array.isArray((doc as { auteurs?: unknown }).auteurs)
-            ? (doc as { auteurs?: Array<{ name?: string | null }> }).auteurs?.[0]
-            : (doc as { auteurs?: { name?: string | null } }).auteurs
+            const rawContributors = (doc as { document_auteurs?: Array<{ author_order?: number; auteurs?: { name?: string | null } | null }> }).document_auteurs
+            const sortedContributors = (rawContributors || [])
+            .sort((a, b) => (a.author_order ?? 0) - (b.author_order ?? 0))
+            const authorNames = sortedContributors.map((c) => c.auteurs?.name).filter(Boolean).join(", ")
 
             return {
             id: String(doc.id),
             title: String(doc.title ?? ""),
-            author: String(authorRelation?.name ?? "Auteur inconnu"),
+            author: authorNames || "Auteur inconnu",
             type: String(doc.type ?? "book"),
+            cote_dewey: (doc.cote_dewey as string | null) ?? null,
+            cote_complete: (doc.cote_complete as string | null) ?? null,
             total_exemplaires: Number(doc.total_exemplaires ?? 0),
             exemplaires_disponibles: Number(doc.exemplaires_disponibles ?? 0),
             digital_url: (doc.digital_url as string | null) ?? null,
@@ -64,11 +69,12 @@
     const filteredBooks = books.filter((book) => {
         const title = (book.title ?? "").toLowerCase()
         const author = (book.author ?? "").toLowerCase()
+        const cote = (book.cote_complete ?? book.cote_dewey ?? "").toLowerCase()
         const term = searchTerm.trim().toLowerCase()
 
         if (!term) return true
 
-        return title.includes(term) || author.includes(term)
+        return title.includes(term) || author.includes(term) || cote.includes(term)
     })
 
     const getTypeLabel = (type: string) => {
@@ -124,18 +130,19 @@
             <table className="w-full min-w-[800px]">
             <thead className="bg-slate-50 dark:bg-slate-800">
                 <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Titre</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Auteur(s)</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Type</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Exemplaires</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Numérique</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Titre</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Cote</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Auteur(s)</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Type</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Exemplaires</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Numérique</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Actions</th>
                 </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                 {filteredBooks.length === 0 ? (
                 <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+                    <td colSpan={7} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
                     <div className="flex flex-col items-center gap-3">
                         <BookOpen className="w-12 h-12 text-slate-300 dark:text-slate-600" />
                         <p>{searchTerm ? "Aucun document ne correspond à votre recherche" : "Aucun document dans le catalogue"}</p>
@@ -154,6 +161,9 @@
                 filteredBooks.map((book) => (
                     <tr key={book.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
                     <td className="px-6 py-4 text-sm font-medium text-slate-900 dark:text-white">{book.title}</td>
+                    <td className="px-6 py-4 text-sm font-mono text-slate-600 dark:text-slate-400">
+                        {book.cote_complete || book.cote_dewey || "—"}
+                    </td>
                     <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{book.author}</td>
                     <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">
                         <Badge variant="outline" className="border-slate-300 dark:border-slate-700 capitalize">

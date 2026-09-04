@@ -4,14 +4,19 @@
     import { useState, useEffect, useCallback } from "react"
     import { useRouter, useParams } from "next/navigation"
     import { createClient } from "@/lib/supabase/client"
-    import { Save, Loader2, ArrowLeft, BookOpen, FileText, HardDrive } from "lucide-react"
+    import { Save, Loader2, ArrowLeft, BookOpen, FileText, HardDrive, MapPin } from "lucide-react"
     import { Button } from "@/components/ui/button"
     import { Input } from "@/components/ui/input"
     import { Label } from "@/components/ui/label"
     import { Textarea } from "@/components/ui/textarea"
     import { Card, CardContent } from "@/components/ui/card"
     import Link from "next/link"
-    import { saveDocumentAuthors } from "@/lib/authors"
+    import { saveDocumentContributors } from "@/lib/contributors"
+    import type { Contributor } from "@/lib/contributors"
+    import { genererCoteComplete } from "@/lib/dewey"
+    import { DeweyPicker } from "@/components/cataloging/dewey-picker"
+    import { ContributionList } from "@/components/cataloging/contribution-list"
+    import { LocationPicker } from "@/components/cataloging/location-picker"
 
     export default function EditBookPage() {
     const router = useRouter()
@@ -23,11 +28,18 @@
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState(false)
-    const [authorsInput, setAuthorsInput] = useState("")
+    const [contributors, setContributors] = useState<Contributor[]>([])
+    const [cote_dewey, setCoteDewey] = useState("")
+    const [cote_libelle, setCoteLibelle] = useState("")
+    const [locationId, setLocationId] = useState<string | null>(null)
 
     const [formData, setFormData] = useState({
         title: "",
         isbn: "",
+        issn: "",
+        doi: "",
+        edition: "",
+        collection: "",
         publisher: "",
         year: "",
         type: "book",
@@ -68,13 +80,14 @@
     const fetchBook = useCallback(async () => {
         setLoading(true)
 
-        const [{ data, error }, { data: documentAuthors, error: authorsError }] = await Promise.all([
+        const [{ data, error }, { data: documentAuthors, error: authorsError }, { data: exemplaireData }] = await Promise.all([
         supabase
             .from("documents")
-            .select("id, title, isbn, publisher, year, type, language, pages, description, total_exemplaires, digital_url")
+            .select("id, title, isbn, issn, doi, edition, collection, publisher, year, type, language, pages, description, total_exemplaires, digital_url, cote_dewey, cote_complete")
             .eq("id", bookId)
             .single(),
-        supabase.from("document_auteurs").select("author_order, auteurs(name)").eq("document_id", bookId).order("author_order"),
+        supabase.from("document_auteurs").select("author_order, role, auteurs(name)").eq("document_id", bookId).order("author_order"),
+        supabase.from("exemplaires").select("location_id").eq("document_id", bookId).limit(1),
         ])
 
         if (error || authorsError || !data) {
@@ -83,14 +96,28 @@
         return
         }
 
-        const authorNames = (documentAuthors || []).map((relation) => {
+        const contribs: Contributor[] = (documentAuthors || []).map((relation) => {
             const author = Array.isArray(relation.auteurs) ? relation.auteurs[0] : relation.auteurs
-            return author?.name || ""
-        }).filter(Boolean).join(", ")
-        setAuthorsInput(authorNames)
+            return {
+            name: author?.name || "",
+            role: (relation.role as Contributor["role"]) || "principal",
+            order: relation.author_order || 1,
+            }
+        }).filter((c) => c.name.length > 0)
+        setContributors(contribs)
+
+        setCoteDewey(data.cote_dewey || "")
+        setCoteLibelle("")
+        const firstEx = (exemplaireData && exemplaireData[0]) as { location_id: string | null } | null
+        setLocationId(firstEx?.location_id ?? null)
+
         setFormData({
         title: data.title || "",
         isbn: data.isbn || "",
+        issn: data.issn || "",
+        doi: data.doi || "",
+        edition: data.edition || "",
+        collection: data.collection || "",
         publisher: data.publisher || "",
         year: data.year?.toString() || "",
         type: data.type || "book",
@@ -129,7 +156,7 @@
         setSuccess(false)
 
         try {
-        if (!authorsInput.trim()) throw new Error("Veuillez saisir au moins un auteur.")
+        if (contributors.length === 0) throw new Error("Veuillez ajouter au moins un contributeur.")
 
         const safeTotal = Math.max(1, Number(formData.total_exemplaires) || 1)
 
@@ -138,6 +165,10 @@
             .update({
             title: formData.title,
             isbn: formData.isbn || null,
+            issn: formData.issn || null,
+            doi: formData.doi || null,
+            edition: formData.edition || null,
+            collection: formData.collection || null,
             publisher: formData.publisher || null,
             year: parseInt(formData.year) || null,
             type: formData.type,
@@ -145,6 +176,9 @@
             pages: parseInt(formData.pages) || null,
             description: formData.description || null,
             total_exemplaires: safeTotal,
+            cote_dewey: cote_dewey || null,
+            dewey_code: cote_dewey || null,
+            cote_complete: genererCoteComplete(cote_dewey || null, contributors[0]?.name || "", formData.year) || null,
             digital_url: formData.has_digital ? formData.digital_url : null,
             total_acces_numeriques: formData.has_digital ? 1 : 0,
             acces_numeriques_disponibles: formData.has_digital ? 1 : 0,
@@ -155,9 +189,30 @@
 
         const { error: deleteAuthorsError } = await supabase.from("document_auteurs").delete().eq("document_id", bookId)
         if (deleteAuthorsError) throw deleteAuthorsError
-        await saveDocumentAuthors(bookId, authorsInput)
+        await saveDocumentContributors(bookId, contributors)
+
+        if (cote_dewey) {
+            try {
+            await supabase.from("classification_log").insert({
+                document_id: bookId,
+                source: "manual",
+                status: "validated",
+                proposed_code: cote_dewey,
+                proposed_libelle: cote_libelle || null,
+                validated_code: cote_dewey,
+            })
+            } catch {
+            // journal non bloquant
+            }
+        }
 
         await syncExemplaires(bookId, safeTotal)
+        if (locationId) {
+            await supabase
+            .from("exemplaires")
+            .update({ location_id: locationId })
+            .eq("document_id", bookId)
+        }
 
         setSuccess(true)
         setTimeout(() => router.push("/admin/books"), 1500)
@@ -202,24 +257,23 @@
             <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
             <CardContent className="p-6 space-y-6">
                 <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2"><BookOpen className="w-5 h-5 text-amber-500" /> Informations principales</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 gap-6">
                 <div className="space-y-2"><Label htmlFor="title">Titre du document *</Label><Input id="title" name="title" value={formData.title} onChange={handleChange} required /></div>
-                <div className="space-y-2">
-                    <Label htmlFor="authors">Auteur(s) *</Label>
-                    <Input
-                        id="authors"
-                        value={authorsInput}
-                        onChange={(e) => setAuthorsInput(e.target.value)}
-                        placeholder="Victor Hugo, Émile Zola"
-                        required
-                    />
-                    <p className="text-xs text-slate-500">Séparez plusieurs auteurs par des virgules.</p>
                 </div>
+                <div className="space-y-2">
+                    <Label className="flex items-center gap-2">Contributeurs (auteurs, encadreur, directeur…)</Label>
+                    <ContributionList contributors={contributors} onChange={setContributors} />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-2"><Label htmlFor="isbn">ISBN</Label><Input id="isbn" name="isbn" value={formData.isbn} onChange={handleChange} /></div>
                 <div className="space-y-2"><Label htmlFor="publisher">Éditeur / Établissement</Label><Input id="publisher" name="publisher" value={formData.publisher} onChange={handleChange} /></div>
                 <div className="space-y-2"><Label htmlFor="year">Année de publication</Label><Input id="year" name="year" type="number" value={formData.year} onChange={handleChange} /></div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2"><Label htmlFor="issn">ISSN</Label><Input id="issn" name="issn" value={formData.issn} onChange={handleChange} /></div>
+                <div className="space-y-2"><Label htmlFor="doi">DOI</Label><Input id="doi" name="doi" value={formData.doi} onChange={handleChange} /></div>
+                <div className="space-y-2"><Label htmlFor="edition">Édition / Numéro</Label><Input id="edition" name="edition" value={formData.edition} onChange={handleChange} /></div>
+                <div className="space-y-2"><Label htmlFor="collection">Collection</Label><Input id="collection" name="collection" value={formData.collection} onChange={handleChange} /></div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-2">
@@ -240,6 +294,42 @@
                 </div>
                 <div className="space-y-2"><Label htmlFor="pages">Nombre de pages</Label><Input id="pages" name="pages" type="number" value={formData.pages} onChange={handleChange} /></div>
                 </div>
+            </CardContent>
+            </Card>
+
+            <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+            <CardContent className="p-6 space-y-6">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2"><BookOpen className="w-5 h-5 text-amber-500" /> Classification Dewey</h2>
+                <div className="space-y-2">
+                <DeweyPicker
+                    value={cote_dewey || null}
+                    libelle={cote_libelle || null}
+                    onChange={(code, libelle) => {
+                    setCoteDewey(code)
+                    setCoteLibelle(libelle)
+                    }}
+                    documentContext={{
+                    title: formData.title,
+                    type: formData.type,
+                    description: formData.description,
+                    }}
+                />
+                {cote_dewey && (
+                    <div className="rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">Cote complète</p>
+                    <p className="mt-1 font-mono text-lg font-semibold text-slate-900 dark:text-white">
+                        {genererCoteComplete(cote_dewey, contributors[0]?.name || "", formData.year) || "—"}
+                    </p>
+                    </div>
+                )}
+                </div>
+            </CardContent>
+            </Card>
+
+            <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+            <CardContent className="p-6 space-y-6">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2"><MapPin className="w-5 h-5 text-amber-500" /> Localisation physique</h2>
+                <LocationPicker value={locationId} onChange={setLocationId} placeholder="Choisir un emplacement…" />
             </CardContent>
             </Card>
 

@@ -18,7 +18,13 @@
     }, [])
 
     return (
-        <ThemeProvider defaultTheme="system">
+        <ThemeProvider
+        attribute="class"
+        defaultTheme="system"
+        enableSystem
+        disableTransitionOnChange
+        storageKey="biblius-theme"
+        >
         <AuthProvider>
             <SplashScreen isLoading={isLoading} />
             {children}

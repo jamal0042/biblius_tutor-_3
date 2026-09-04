@@ -256,7 +256,7 @@
                     Document lié
                 </div>
                 <div className="font-medium text-sm text-slate-900 dark:text-white">{docTitle}</div>
-                <div className="text-xs text-slate-500">{getResourceAuthor(resource)}</div>
+                <div className="text-xs text-slate-500 dark:text-slate-400">{getResourceAuthor(resource)}</div>
                 </div>
             )}
 

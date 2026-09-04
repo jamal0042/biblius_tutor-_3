@@ -294,13 +294,13 @@
             <table className="w-full min-w-[1100px]">
             <thead className="bg-slate-50 dark:bg-slate-800">
                 <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Nom</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Email</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Téléphone</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Matricule</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Rôle</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Statut</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Nom</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Email</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Téléphone</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Matricule</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Rôle</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Statut</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Actions</th>
                 </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">

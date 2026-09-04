@@ -1,43 +1,11 @@
-    /* eslint-disable react-hooks/set-state-in-effect */
-    "use client"
+"use client"
 
-    import * as React from "react"
+import { ThemeProvider as NextThemesProvider } from "next-themes"
+import type { ComponentProps } from "react"
 
-    type Theme = "dark" | "light" | "system"
-
-    type ThemeProviderProps = {
-    children: React.ReactNode
-    defaultTheme?: Theme
-    storageKey?: string
-    }
-
-    export function ThemeProvider({
-    children,
-    defaultTheme = "dark",
-    storageKey = "biblius-theme",
-    }: ThemeProviderProps) {
-    const [theme, setTheme] = React.useState<Theme>(defaultTheme)
-
-    React.useEffect(() => {
-        const savedTheme = localStorage.getItem(storageKey) as Theme
-        if (savedTheme) {
-        setTheme(savedTheme)
-        }
-    }, [storageKey])
-
-    React.useEffect(() => {
-        const root = window.document.documentElement
-        root.classList.remove("light", "dark")
-        
-        if (theme === "system") {
-        const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
-        root.classList.add(systemTheme)
-        } else {
-        root.classList.add(theme)
-        }
-        
-        localStorage.setItem(storageKey, theme)
-    }, [theme, storageKey])
-
-    return <>{children}</>
-    }
+export function ThemeProvider({
+  children,
+  ...props
+}: ComponentProps<typeof NextThemesProvider>) {
+  return <NextThemesProvider {...props}>{children}</NextThemesProvider>
+}

@@ -104,12 +104,12 @@
             <table className="w-full min-w-[800px]">
             <thead className="bg-slate-50 dark:bg-slate-800">
                 <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Membre</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Type</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Motif</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Montant</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Statut</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Membre</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Type</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Motif</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Montant</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Statut</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Actions</th>
                 </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">

@@ -26,6 +26,8 @@
     title: string
     author: string | null
     type: string
+    cote_dewey: string | null
+    cote_complete: string | null
     category_id: string | null
     cover_url: string | null
     exemplaires_disponibles: number | null
@@ -94,7 +96,8 @@
         const matchesSearch =
         !q ||
         doc.title.toLowerCase().includes(q) ||
-        getAuthorName(doc).toLowerCase().includes(q)
+        getAuthorName(doc).toLowerCase().includes(q) ||
+        (doc.cote_complete ?? doc.cote_dewey ?? "").toLowerCase().includes(q)
 
         const matchesType = selectedType === "all" || doc.type === selectedType
 
@@ -273,6 +276,12 @@
                 {!compact && (
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5" title={authorName}>
                     {authorName}
+                </p>
+                )}
+
+                {!compact && (doc.cote_complete || doc.cote_dewey) && (
+                <p className="text-[9px] font-mono text-amber-600 dark:text-amber-400 truncate mt-0.5">
+                    {doc.cote_complete || doc.cote_dewey}
                 </p>
                 )}
 

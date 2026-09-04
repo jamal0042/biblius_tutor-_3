@@ -177,13 +177,13 @@
             <table className="w-full min-w-[900px]">
             <thead className="bg-slate-50 dark:bg-slate-800">
                 <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Titre</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Auteur</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Type</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Source</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Accès</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Téléchargement</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Titre</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Auteur</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Type</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Source</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Accès</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Téléchargement</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Actions</th>
                 </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">

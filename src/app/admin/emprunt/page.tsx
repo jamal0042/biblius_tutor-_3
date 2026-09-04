@@ -778,14 +778,14 @@
         ========================================================= */
 
         return (
-            <main className="min-h-full bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.18),transparent_24%),radial-gradient(circle_at_bottom_right,_rgba(168,85,247,0.12),transparent_30%),linear-gradient(180deg,#020817_0%,#0f172a_100%)] text-slate-100">
+            <main className="min-h-full bg-slate-50 text-slate-900 dark:bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.18),transparent_24%),radial-gradient(circle_at_bottom_right,_rgba(168,85,247,0.12),transparent_30%),linear-gradient(180deg,#020817_0%,#0f172a_100%)] dark:text-slate-100">
                 <div className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8">
 
                     {/* =====================================================
                         HEADER
                     ===================================================== */}
 
-                    <header className="mb-6 overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.04] shadow-[0_30px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+                    <header className="mb-6 overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_30px_80px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-white/[0.04] dark:shadow-[0_30px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl">
 
                         <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
 
@@ -793,50 +793,50 @@
 
                                 <Link
                                     href="/admin"
-                                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-700 bg-slate-900/70 text-slate-300 transition hover:border-slate-600 hover:bg-slate-800 hover:text-white"
+                                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-300 bg-slate-100 text-slate-700 transition hover:border-slate-400 hover:bg-slate-200 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800 dark:hover:text-white"
                                 >
                                     <ArrowLeft className="h-5 w-5" />
                                 </Link>
 
                                 <div>
                                     <div className="flex items-center gap-2">
-                                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-400">
+                                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-600 dark:text-sky-400">
                                             Biblius
                                         </p>
 
-                                        <Badge className="bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/10">
-                                            <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                                        <Badge className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-400">
+                                            <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
                                             En ligne
                                         </Badge>
                                     </div>
 
-                                    <h1 className="mt-1 text-2xl font-bold tracking-tight text-white">
+                                    <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
                                         Gestion des emprunts
                                     </h1>
 
-                                    <p className="mt-1 text-sm text-slate-400">
+                                    <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                                         Préparez, vérifiez et confirmez les emprunts des membres.
                                     </p>
                                 </div>
                             </div>
 
                             <div className="flex items-center gap-2">
-                                <div className="hidden rounded-2xl border border-sky-400/20 bg-sky-500/10 px-4 py-2 text-right shadow-lg shadow-sky-950/20 sm:block">
-                                    <p className="text-[10px] uppercase tracking-[0.2em] text-sky-200/70">
+                                <div className="hidden rounded-2xl border border-sky-400/20 bg-sky-500/10 px-4 py-2 text-right sm:block dark:shadow-lg dark:shadow-sky-950/20">
+                                    <p className="text-[10px] uppercase tracking-[0.2em] text-sky-700 dark:text-sky-200/70">
                                         Emprunts actifs
                                     </p>
 
-                                    <p className="text-lg font-bold text-white">
+                                    <p className="text-lg font-bold text-slate-900 dark:text-white">
                                         {loans.length}
                                     </p>
                                 </div>
 
-                                <div className="rounded-2xl border border-violet-400/20 bg-violet-500/10 px-4 py-2 text-right shadow-lg shadow-violet-950/20">
-                                    <p className="text-[10px] uppercase tracking-[0.2em] text-violet-200/70">
+                                <div className="rounded-2xl border border-violet-400/20 bg-violet-500/10 px-4 py-2 text-right dark:shadow-lg dark:shadow-violet-950/20">
+                                    <p className="text-[10px] uppercase tracking-[0.2em] text-violet-700 dark:text-violet-200/70">
                                         Disponibles
                                     </p>
 
-                                    <p className="text-lg font-bold text-violet-300">
+                                    <p className="text-lg font-bold text-violet-600 dark:text-violet-300">
                                         {availableExemplaires.length}
                                     </p>
                                 </div>
@@ -845,40 +845,40 @@
 
                         {/* Barre d'étapes */}
 
-                        <div className="border-t border-white/10 bg-slate-950/40 px-5 py-3">
+                        <div className="border-t border-slate-200 bg-slate-100 px-5 py-3 dark:border-white/10 dark:bg-slate-950/40">
                             <div className="flex flex-wrap items-center gap-2 text-xs">
 
                                 <div
                                     className={`flex items-center gap-2 rounded-full px-3 py-1.5 ${
                                         memberId
-                                            ? "bg-sky-500/10 text-sky-300"
-                                            : "bg-slate-800 text-slate-400"
+                                            ? "bg-sky-500/10 text-sky-600 dark:text-sky-300"
+                                            : "bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
                                     }`}
                                 >
                                     <UserRound className="h-3.5 w-3.5" />
                                     1. Membre
                                 </div>
 
-                                <ChevronRight className="h-3.5 w-3.5 text-slate-600" />
+                                <ChevronRight className="h-3.5 w-3.5 text-slate-400 dark:text-slate-600" />
 
                                 <div
                                     className={`flex items-center gap-2 rounded-full px-3 py-1.5 ${
                                         pendingLoans.length > 0
-                                            ? "bg-sky-500/10 text-sky-300"
-                                            : "bg-slate-800 text-slate-400"
+                                            ? "bg-sky-500/10 text-sky-600 dark:text-sky-300"
+                                            : "bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
                                     }`}
                                 >
                                     <BookOpen className="h-3.5 w-3.5" />
                                     2. Sélection
                                 </div>
 
-                                <ChevronRight className="h-3.5 w-3.5 text-slate-600" />
+                                <ChevronRight className="h-3.5 w-3.5 text-slate-400 dark:text-slate-600" />
 
                                 <div
                                     className={`flex items-center gap-2 rounded-full px-3 py-1.5 ${
                                         pendingLoans.length > 0
-                                            ? "bg-amber-500/10 text-amber-300"
-                                            : "bg-slate-800 text-slate-400"
+                                            ? "bg-amber-500/10 text-amber-600 dark:text-amber-300"
+                                            : "bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
                                     }`}
                                 >
                                     <CheckCircle2 className="h-3.5 w-3.5" />
@@ -904,20 +904,20 @@
                                 1. CONFIGURATION
                             --------------------------------------------- */}
 
-                            <Card className="overflow-hidden border border-white/10 bg-slate-900/70 text-white shadow-[0_20px_60px_rgba(15,23,42,0.4)] backdrop-blur-sm">
+                            <Card className="overflow-hidden border border-slate-200 bg-white text-slate-900 dark:border-white/10 dark:bg-slate-900/70 dark:text-white dark:shadow-[0_20px_60px_rgba(15,23,42,0.4)] backdrop-blur-sm">
 
-                                <CardHeader className="border-b border-white/10 bg-gradient-to-r from-sky-500/12 via-slate-900/70 to-violet-500/10 pb-4">
+                                <CardHeader className="border-b border-slate-200 bg-gradient-to-r from-sky-500/12 via-white to-violet-500/10 pb-4 dark:border-white/10 dark:via-slate-900/70">
                                     <div className="flex items-center gap-3">
                                         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500/20 to-indigo-500/20 ring-1 ring-sky-400/30">
-                                            <Users className="h-5 w-5 text-sky-300" />
+                                            <Users className="h-5 w-5 text-sky-600 dark:text-sky-300" />
                                         </div>
 
                                         <div>
-                                            <CardTitle className="text-lg tracking-tight text-white">
+                                            <CardTitle className="text-lg tracking-tight text-slate-900 dark:text-white">
                                                 Préparer l&apos;emprunt
                                             </CardTitle>
 
-                                            <p className="mt-1 text-xs text-slate-400">
+                                            <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
                                                 Sélectionnez le membre et la date limite de retour.
                                             </p>
                                         </div>
@@ -931,8 +931,8 @@
                                         {/* Membre */}
 
                                         <div>
-                                            <label className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-300">
-                                                <UserRound className="h-4 w-4 text-sky-400" />
+                                            <label className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                                                <UserRound className="h-4 w-4 text-sky-600 dark:text-sky-400" />
                                                 Membre
                                             </label>
 
@@ -943,7 +943,7 @@
                                                         e.target.value
                                                     )
                                                 }
-                                                className="h-12 w-full rounded-2xl border border-slate-700 bg-slate-950/80 px-3 text-sm text-white outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-500/20"
+                                                className="h-12 w-full rounded-2xl border border-slate-300 bg-slate-100 px-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-500/20 dark:border-slate-700 dark:bg-slate-950/80 dark:text-white"
                                             >
                                                 <option value="">
                                                     Sélectionner un membre
@@ -964,8 +964,8 @@
                                         {/* Date */}
 
                                         <div>
-                                            <label className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-300">
-                                                <CalendarDays className="h-4 w-4 text-amber-400" />
+                                            <label className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                                                <CalendarDays className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                                                 Date de retour
                                             </label>
 
@@ -977,7 +977,7 @@
                                                         e.target.value
                                                     )
                                                 }
-                                                className="h-12 border-slate-700 bg-[#091525] text-white"
+                                                className="h-12 border-slate-300 bg-slate-100 text-slate-900 dark:border-slate-700 dark:bg-[#091525] dark:text-white"
                                             />
                                         </div>
                                     </div>
@@ -992,7 +992,7 @@
                                                     Membre
                                                 </p>
 
-                                                <p className="mt-1 font-medium text-white">
+                                                <p className="mt-1 font-medium text-slate-900 dark:text-white">
                                                     {selectedMember.first_name}{" "}
                                                     {selectedMember.last_name}
                                                 </p>
@@ -1003,7 +1003,7 @@
                                                     Emprunts
                                                 </p>
 
-                                                <p className="mt-1 font-semibold text-sky-300">
+                                                <p className="mt-1 font-semibold text-sky-600 dark:text-sky-300">
                                                     {memberCurrentLoans} /{" "}
                                                     {memberMaxLoans}
                                                 </p>
@@ -1017,8 +1017,8 @@
                                                 <p
                                                     className={`mt-1 font-semibold ${
                                                         remainingSlots > 0
-                                                            ? "text-emerald-400"
-                                                            : "text-red-400"
+                                                            ? "text-emerald-600 dark:text-emerald-400"
+                                                            : "text-red-600 dark:text-red-400"
                                                     }`}
                                                 >
                                                     {remainingSlots} place
@@ -1036,26 +1036,26 @@
                                 2. RECHERCHE EXEMPLAIRES
                             --------------------------------------------- */}
 
-                            <Card className="overflow-hidden border border-white/10 bg-slate-900/70 text-white shadow-[0_20px_60px_rgba(15,23,42,0.42)]">
+                            <Card className="overflow-hidden border border-slate-200 bg-white text-slate-900 dark:border-white/10 dark:bg-slate-900/70 dark:text-white dark:shadow-[0_20px_60px_rgba(15,23,42,0.42)]">
 
-                                <CardHeader className="border-b border-white/10 bg-gradient-to-r from-amber-500/10 via-slate-900/80 to-sky-500/10">
+                                <CardHeader className="border-b border-slate-200 bg-gradient-to-r from-amber-500/10 via-white to-sky-500/10 dark:border-white/10 dark:via-slate-900/80">
 
                                     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 
                                         <div>
                                             <CardTitle className="flex items-center gap-2 text-lg">
-                                                <BookOpen className="h-5 w-5 text-amber-400" />
+                                                <BookOpen className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                                                 Exemplaires disponibles
                                             </CardTitle>
 
-                                            <p className="mt-1 text-xs text-slate-400">
+                                            <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
                                                 Ajoutez les livres à l&apos;opération d&apos;emprunt.
                                             </p>
                                         </div>
 
                                         <Badge
                                             variant="outline"
-                                            className="w-fit border-sky-400/20 bg-sky-500/10 px-3 py-1 text-sky-200"
+                                            className="w-fit border-sky-400/20 bg-sky-500/10 px-3 py-1 text-sky-700 dark:text-sky-200"
                                         >
                                             {displayedExemplaires.length} disponible
                                             {displayedExemplaires.length > 1
@@ -1069,7 +1069,7 @@
 
                                     {/* Recherche */}
 
-                                    <div className="border-b border-slate-800 p-4">
+                                    <div className="border-b border-slate-200 p-4 dark:border-slate-800">
 
                                         <div className="grid gap-3 md:grid-cols-[1fr_220px]">
 
@@ -1084,7 +1084,7 @@
                                                             e.target.value
                                                         )
                                                     }
-                                                    className="h-11 border-slate-700 bg-slate-950/80 pl-10 text-white placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-sky-500/20"
+                                                    className="h-11 border-slate-300 bg-slate-100 pl-10 text-slate-900 placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-sky-500/20 dark:border-slate-700 dark:bg-slate-950/80 dark:text-white"
                                                 />
                                             </div>
 
@@ -1095,7 +1095,7 @@
                                                         e.target.value
                                                     )
                                                 }
-                                                className="h-11 rounded-2xl border border-slate-700 bg-slate-950/80 px-3 text-sm text-white outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-500/20"
+                                                className="h-11 rounded-2xl border border-slate-300 bg-slate-100 px-3 text-sm text-slate-900 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-500/20 dark:border-slate-700 dark:bg-slate-950/80 dark:text-white"
                                             >
                                                 <option value="">
                                                     Tous les documents
@@ -1131,7 +1131,7 @@
                                                         handleBarcodeSearch()
                                                     }
                                                 }}
-                                                className="h-11 border-slate-700 bg-[#091525] text-white placeholder:text-slate-500"
+                                                className="h-11 border-slate-300 bg-slate-100 text-slate-900 placeholder:text-slate-500 dark:border-slate-700 dark:bg-[#091525] dark:text-white"
                                             />
 
                                             <Button
@@ -1139,7 +1139,7 @@
                                                 onClick={
                                                     handleBarcodeSearch
                                                 }
-                                                className="h-11 shrink-0 bg-gradient-to-r from-sky-500 to-indigo-500 text-white shadow-lg shadow-sky-900/30 hover:brightness-110"
+                                                className="h-11 shrink-0 bg-gradient-to-r from-sky-500 to-indigo-500 text-white hover:brightness-110 dark:shadow-lg dark:shadow-sky-900/30"
                                             >
                                                 <ScanLine className="mr-2 h-4 w-4" />
                                                 Scanner
@@ -1150,15 +1150,15 @@
                                     {/* Liste */}
 
                                     {loading ? (
-                                        <div className="flex items-center justify-center gap-2 p-10 text-sm text-slate-400">
+                                        <div className="flex items-center justify-center gap-2 p-10 text-sm text-slate-600 dark:text-slate-400">
                                             <Loader2 className="h-4 w-4 animate-spin" />
                                             Chargement des exemplaires...
                                         </div>
                                     ) : displayedExemplaires.length === 0 ? (
                                         <div className="p-10 text-center">
-                                            <BookOpen className="mx-auto h-10 w-10 text-slate-700" />
+                                            <BookOpen className="mx-auto h-10 w-10 text-slate-300 dark:text-slate-700" />
 
-                                            <p className="mt-3 font-medium text-slate-300">
+                                            <p className="mt-3 font-medium text-slate-700 dark:text-slate-300">
                                                 Aucun exemplaire trouvé
                                             </p>
 
@@ -1167,7 +1167,7 @@
                                             </p>
                                         </div>
                                     ) : (
-                                        <div className="divide-y divide-slate-800">
+                                        <div className="divide-y divide-slate-200 dark:divide-slate-800">
                                             {displayedExemplaires.map(
                                                 (ex) => {
                                                     const doc =
@@ -1188,24 +1188,24 @@
                                                             className={`p-4 transition ${
                                                                 added
                                                                     ? "bg-sky-500/[0.04]"
-                                                                    : "hover:bg-slate-800/30"
+                                                                    : "hover:bg-slate-200 dark:hover:bg-slate-800/30"
                                                             }`}
                                                         >
                                                             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
                                                                 <div className="min-w-0">
                                                                     <div className="flex items-start gap-3">
-                                                                        <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-800">
-                                                                            <BookOpen className="h-5 w-5 text-slate-400" />
+                                                                        <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-200 dark:bg-slate-800">
+                                                                            <BookOpen className="h-5 w-5 text-slate-500 dark:text-slate-400" />
                                                                         </div>
 
                                                                         <div className="min-w-0">
-                                                                            <p className="truncate font-semibold text-white">
+                                                                            <p className="truncate font-semibold text-slate-900 dark:text-white">
                                                                                 {doc?.title ||
                                                                                     "Document inconnu"}
                                                                             </p>
 
-                                                                            <p className="mt-1 text-sm text-slate-400">
+                                    <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                                                                                 {getAuthorName(
                                                                                     doc
                                                                                 )}
@@ -1214,7 +1214,7 @@
                                                                             <div className="mt-2 flex flex-wrap gap-2">
                                                                                 <Badge
                                                                                     variant="outline"
-                                                                                    className="border-slate-700 bg-slate-900 font-mono text-xs text-slate-300"
+                                                                                    className="border-slate-300 bg-white font-mono text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
                                                                                 >
                                                                                     {
                                                                                         ex.barcode
@@ -1223,7 +1223,7 @@
 
                                                                                 <Badge
                                                                                     variant="outline"
-                                                                                    className="border-slate-700 bg-slate-900 text-xs text-slate-400"
+                                                                                    className="border-slate-300 bg-white text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400"
                                                                                 >
                                                                                     {
                                                                                         getLocationName(
@@ -1249,7 +1249,7 @@
                                                                     }
                                                                     className={
                                                                         added
-                                                                            ? "bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/10"
+                                                                            ? "bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-300"
                                                                             : "bg-sky-500 text-white hover:bg-sky-600"
                                                                     }
                                                                 >
@@ -1282,15 +1282,15 @@
 
                         <div className="xl:sticky xl:top-5 xl:self-start">
 
-                            <Card className="overflow-hidden border border-sky-400/20 bg-slate-900/70 text-white shadow-[0_24px_70px_rgba(14,116,144,0.18)] backdrop-blur-sm">
+                            <Card className="overflow-hidden border border-sky-400/20 bg-white text-slate-900 backdrop-blur-sm dark:bg-slate-900/70 dark:text-white dark:shadow-[0_24px_70px_rgba(14,116,144,0.18)]">
 
-                                <CardHeader className="border-b border-white/10 bg-gradient-to-r from-sky-500/12 via-slate-900/80 to-violet-500/10">
+                                <CardHeader className="border-b border-slate-200 bg-gradient-to-r from-sky-500/12 via-white to-violet-500/10 dark:border-white/10 dark:via-slate-900/80">
 
                                     <div className="flex items-center justify-between">
 
                                         <div className="flex items-center gap-3">
                                             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-500/10">
-                                                <BookOpen className="h-5 w-5 text-sky-400" />
+                                                <BookOpen className="h-5 w-5 text-sky-600 dark:text-sky-400" />
                                             </div>
 
                                             <div>
@@ -1304,7 +1304,7 @@
                                             </div>
                                         </div>
 
-                                        <div className="flex h-9 min-w-9 items-center justify-center rounded-full bg-sky-500/10 px-3 text-sm font-bold text-sky-300">
+                                        <div className="flex h-9 min-w-9 items-center justify-center rounded-full bg-sky-500/10 px-3 text-sm font-bold text-sky-600 dark:text-sky-300">
                                             {pendingLoans.length}
                                         </div>
                                     </div>
@@ -1313,10 +1313,10 @@
                                 <CardContent className="p-4">
 
                                     {!memberId ? (
-                                        <div className="rounded-xl border border-dashed border-slate-700 bg-slate-900/30 p-7 text-center">
-                                            <UserRound className="mx-auto h-9 w-9 text-slate-600" />
+                                        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-100 p-7 text-center dark:border-slate-700 dark:bg-slate-900/30">
+                                            <UserRound className="mx-auto h-9 w-9 text-slate-400 dark:text-slate-600" />
 
-                                            <p className="mt-3 font-medium text-slate-300">
+                                            <p className="mt-3 font-medium text-slate-700 dark:text-slate-300">
                                                 Aucun membre sélectionné
                                             </p>
 
@@ -1325,10 +1325,10 @@
                                             </p>
                                         </div>
                                     ) : pendingLoans.length === 0 ? (
-                                        <div className="rounded-xl border border-dashed border-slate-700 bg-slate-900/30 p-7 text-center">
-                                            <BookOpen className="mx-auto h-9 w-9 text-slate-600" />
+                                        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-100 p-7 text-center dark:border-slate-700 dark:bg-slate-900/30">
+                                            <BookOpen className="mx-auto h-9 w-9 text-slate-400 dark:text-slate-600" />
 
-                                            <p className="mt-3 font-medium text-slate-300">
+                                            <p className="mt-3 font-medium text-slate-700 dark:text-slate-300">
                                                 Votre panier est vide
                                             </p>
 
@@ -1344,11 +1344,11 @@
                                             <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 p-3">
                                                 <div className="flex items-center gap-3">
                                                     <div className="flex h-9 w-9 items-center justify-center rounded-full bg-sky-500/10">
-                                                        <UserRound className="h-4 w-4 text-sky-400" />
+                                                        <UserRound className="h-4 w-4 text-sky-600 dark:text-sky-400" />
                                                     </div>
 
                                                     <div className="min-w-0">
-                                                        <p className="truncate text-sm font-semibold text-white">
+                                                        <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
                                                             {selectedMember?.first_name}{" "}
                                                             {selectedMember?.last_name}
                                                         </p>
@@ -1376,7 +1376,7 @@
                                                                 key={
                                                                     ex.id
                                                                 }
-                                                                className="group rounded-xl border border-slate-700 bg-[#091525] p-3"
+                                                                className="group rounded-xl border border-slate-300 bg-slate-100 p-3 dark:border-slate-700 dark:bg-[#091525]"
                                                             >
                                                                 <div className="flex gap-3">
                                                                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/10">
@@ -1385,7 +1385,7 @@
 
                                                                     <div className="min-w-0 flex-1">
                                                                         <div className="flex items-start justify-between gap-2">
-                                                                            <p className="line-clamp-2 text-sm font-medium text-white">
+                                                                            <p className="line-clamp-2 text-sm font-medium text-slate-900 dark:text-white">
                                                                                 {doc?.title ||
                                                                                     "Document inconnu"}
                                                                             </p>
@@ -1398,7 +1398,7 @@
                                                                                         ex.id
                                                                                     )
                                                                                 }
-                                                                                className="h-7 w-7 shrink-0 text-slate-500 hover:bg-red-500/10 hover:text-red-400"
+                                                                                className="h-7 w-7 shrink-0 text-slate-500 hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
                                                                             >
                                                                                 <X className="h-4 w-4" />
                                                                             </Button>
@@ -1413,7 +1413,7 @@
                                                                         <div className="mt-2 flex flex-wrap gap-1.5">
                                                                             <Badge
                                                                                 variant="outline"
-                                                                                className="border-slate-700 bg-slate-900 font-mono text-[10px] text-slate-400"
+                                                                                className="border-slate-300 bg-white font-mono text-[10px] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400"
                                                                             >
                                                                                 {
                                                                                     ex.barcode
@@ -1422,7 +1422,7 @@
 
                                                                             <Badge
                                                                                 variant="outline"
-                                                                                className="border-slate-700 bg-slate-900 text-[10px] text-slate-500"
+                                                                                className="border-slate-300 bg-white text-[10px] text-slate-500 dark:border-slate-700 dark:bg-slate-900"
                                                                             >
                                                                                 {getLocationName(
                                                                                     ex
@@ -1439,7 +1439,7 @@
 
                                             {/* Résumé */}
 
-                                            <div className="border-t border-slate-800 pt-4">
+                                            <div className="border-t border-slate-200 pt-4 dark:border-slate-800">
 
                                                 <div className="space-y-2 text-sm">
 
@@ -1448,7 +1448,7 @@
                                                             Documents
                                                         </span>
 
-                                                        <span className="font-medium text-white">
+                                                        <span className="font-medium text-slate-900 dark:text-white">
                                                             {
                                                                 pendingLoans.length
                                                             }
@@ -1460,7 +1460,7 @@
                                                             Retour prévu
                                                         </span>
 
-                                                        <span className="font-medium text-white">
+                                                        <span className="font-medium text-slate-900 dark:text-white">
                                                             {dueDate
                                                                 ? formatDate(
                                                                     dueDate
@@ -1478,8 +1478,8 @@
                                                             className={`font-medium ${
                                                                 remainingSlots >
                                                                 0
-                                                                    ? "text-emerald-400"
-                                                                    : "text-red-400"
+                                                                    ? "text-emerald-600 dark:text-emerald-400"
+                                                                    : "text-red-600 dark:text-red-400"
                                                             }`}
                                                         >
                                                             {
@@ -1505,7 +1505,7 @@
                                                         !memberId ||
                                                         !dueDate
                                                     }
-                                                    className="mt-5 h-12 w-full bg-sky-500 font-semibold text-white shadow-lg shadow-sky-950/30 hover:bg-sky-600"
+                                                    className="mt-5 h-12 w-full bg-sky-500 font-semibold text-white hover:bg-sky-600 dark:shadow-lg dark:shadow-sky-950/30"
                                                 >
                                                     {saving ? (
                                                         <>
@@ -1528,7 +1528,7 @@
                                                     disabled={
                                                         saving
                                                     }
-                                                    className="mt-2 w-full text-slate-500 hover:bg-red-500/5 hover:text-red-400"
+                                                    className="mt-2 w-full text-slate-500 hover:bg-red-500/5 hover:text-red-600 dark:hover:text-red-400"
                                                 >
                                                     <Trash2 className="mr-2 h-4 w-4" />
                                                     Vider le panier
@@ -1545,15 +1545,15 @@
                         EMPRUNTS EN COURS
                     ===================================================== */}
 
-                    <Card className="mt-6 overflow-hidden border border-white/10 bg-slate-900/70 text-white shadow-[0_20px_60px_rgba(15,23,42,0.42)]">
+                    <Card className="mt-6 overflow-hidden border border-slate-200 bg-white text-slate-900 dark:border-white/10 dark:bg-slate-900/70 dark:text-white dark:shadow-[0_20px_60px_rgba(15,23,42,0.42)]">
 
-                        <CardHeader className="border-b border-white/10 bg-gradient-to-r from-slate-900/90 via-slate-900/80 to-sky-500/10">
+                        <CardHeader className="border-b border-slate-200 bg-gradient-to-r from-slate-100 via-white to-sky-500/10 dark:border-white/10 dark:from-slate-900/90 dark:via-slate-900/80">
 
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
                                 <div>
                                     <CardTitle className="flex items-center gap-2">
-                                        <RotateCcw className="h-5 w-5 text-amber-400" />
+                                        <RotateCcw className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                                         Emprunts en cours
                                     </CardTitle>
 
@@ -1564,7 +1564,7 @@
 
                                 <Badge
                                     variant="outline"
-                                    className="w-fit border-slate-700 bg-slate-900 text-slate-300"
+                                    className="w-fit border-slate-300 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
                                 >
                                     {loans.length} actif
                                     {loans.length > 1
@@ -1577,7 +1577,7 @@
                         <CardContent className="p-0">
 
                             {loading ? (
-                                <div className="flex items-center justify-center gap-2 p-10 text-sm text-slate-400">
+                                <div className="flex items-center justify-center gap-2 p-10 text-sm text-slate-600 dark:text-slate-400">
                                     <Loader2 className="h-4 w-4 animate-spin" />
                                     Chargement...
                                 </div>
@@ -1585,7 +1585,7 @@
                                 <div className="p-10 text-center">
                                     <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-500/30" />
 
-                                    <p className="mt-3 font-medium text-slate-300">
+                                    <p className="mt-3 font-medium text-slate-700 dark:text-slate-300">
                                         Aucun emprunt en cours
                                     </p>
 
@@ -1597,7 +1597,7 @@
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left text-sm">
 
-                                        <thead className="bg-[#091525] text-xs uppercase tracking-wider text-slate-500">
+                                        <thead className="bg-slate-100 text-xs uppercase tracking-wider text-slate-500 dark:bg-[#091525]">
                                             <tr>
                                                 <th className="px-5 py-4 font-medium">
                                                     Document
@@ -1625,7 +1625,7 @@
                                             </tr>
                                         </thead>
 
-                                        <tbody className="divide-y divide-slate-800">
+                                        <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
 
                                             {loans.map(
                                                 (loan) => {
@@ -1655,12 +1655,12 @@
                                                             key={
                                                                 loan.id
                                                             }
-                                                            className="transition hover:bg-slate-800/20"
+                                                            className="transition hover:bg-slate-200 dark:hover:bg-slate-800/20"
                                                         >
 
                                                             <td className="px-5 py-4">
                                                                 <div className="max-w-[280px]">
-                                                                    <p className="truncate font-medium text-white">
+                                                                    <p className="truncate font-medium text-slate-900 dark:text-white">
                                                                         {doc?.title ||
                                                                             "Inconnu"}
                                                                     </p>
@@ -1674,7 +1674,7 @@
                                                             </td>
 
                                                             <td className="px-5 py-4">
-                                                                <p className="font-medium text-white">
+                                                                <p className="font-medium text-slate-900 dark:text-white">
                                                                     {member
                                                                         ? `${member.first_name} ${member.last_name}`
                                                                         : "Inconnu"}
@@ -1688,7 +1688,7 @@
                                                             <td className="px-5 py-4">
                                                                 <Badge
                                                                     variant="outline"
-                                                                    className="border-slate-700 bg-slate-900 font-mono text-xs text-slate-300"
+                                                                    className="border-slate-300 bg-white font-mono text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
                                                                 >
                                                                     {exemplaire?.barcode ||
                                                                         "N/A"}
@@ -1698,8 +1698,8 @@
                                                             <td
                                                                 className={`px-5 py-4 ${
                                                                     isOverdue
-                                                                        ? "font-semibold text-red-400"
-                                                                        : "text-slate-300"
+                                                                        ? "font-semibold text-red-600 dark:text-red-400"
+                                                                        : "text-slate-700 dark:text-slate-300"
                                                                 }`}
                                                             >
                                                                 {formatDate(
@@ -1717,8 +1717,8 @@
                                                                 <Badge
                                                                     className={
                                                                         isOverdue
-                                                                            ? "border border-red-500/20 bg-red-500/10 text-red-300 hover:bg-red-500/10"
-                                                                            : "border border-emerald-500/20 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/10"
+? "border border-red-500/20 bg-red-500/10 text-red-600 hover:bg-red-500/10 dark:text-red-300"
+: "border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-300"
                                                                     }
                                                                 >
                                                                     {isOverdue
@@ -1738,7 +1738,7 @@
                                                                                 loan
                                                                             )
                                                                         }
-                                                                        className="border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"
+                                                                        className="border-slate-300 bg-white text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
                                                                         title={`Prolonger de ${EXTENSION_DAYS} jours`}
                                                                     >
                                                                         <Clock className="mr-1.5 h-4 w-4" />
@@ -1777,16 +1777,16 @@
                     {returnLoan && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
 
-                            <Card className="w-full max-w-lg overflow-hidden border-slate-700 bg-[#0c192b] text-white shadow-2xl">
+                            <Card className="w-full max-w-lg overflow-hidden border-slate-300 bg-white text-slate-900 shadow-2xl dark:border-slate-700 dark:bg-[#0c192b] dark:text-white">
 
-                                <CardHeader className="border-b border-slate-800 bg-[#0e1d31]">
+                                <CardHeader className="border-b border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-[#0e1d31]">
 
                                     <div className="flex items-start justify-between gap-4">
 
                                         <div>
                                             <div className="flex items-center gap-2">
                                                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/10">
-                                                    <RotateCcw className="h-4 w-4 text-emerald-400" />
+                                                    <RotateCcw className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                                                 </div>
 
                                                 <CardTitle>
@@ -1807,7 +1807,7 @@
                                                     null
                                                 )
                                             }
-                                            className="text-slate-400 hover:bg-slate-800 hover:text-white"
+                                            className="text-slate-500 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
                                         >
                                             <X className="h-5 w-5" />
                                         </Button>
@@ -1818,16 +1818,16 @@
 
                                     {/* Livre */}
 
-                                    <div className="rounded-xl border border-slate-700 bg-[#091525] p-4">
+                                    <div className="rounded-xl border border-slate-300 bg-slate-100 p-4 dark:border-slate-700 dark:bg-[#091525]">
 
                                         <div className="flex gap-3">
 
                                             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-amber-500/10">
-                                                <BookOpen className="h-5 w-5 text-amber-400" />
+                                                <BookOpen className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                                             </div>
 
                                             <div>
-                                                <p className="font-semibold text-white">
+                                                <p className="font-semibold text-slate-900 dark:text-white">
                                                     {
                                                         toSingle(
                                                             returnLoan.documents
@@ -1845,7 +1845,7 @@
 
                                                 <Badge
                                                     variant="outline"
-                                                    className="mt-2 border-slate-700 bg-slate-900 font-mono text-xs text-slate-400"
+                                                    className="mt-2 border-slate-300 bg-white font-mono text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400"
                                                 >
                                                     {
                                                         toSingle(
@@ -1860,7 +1860,7 @@
                                     {/* État */}
 
                                     <div>
-                                        <label className="mb-2 block text-sm font-medium text-slate-300">
+                                        <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
                                             État du livre
                                         </label>
 
@@ -1873,7 +1873,7 @@
                                                     e.target.value
                                                 )
                                             }
-                                            className="h-11 w-full rounded-xl border border-slate-700 bg-[#091525] px-3 text-sm text-white outline-none focus:border-sky-500"
+                                            className="h-11 w-full rounded-xl border border-slate-300 bg-slate-100 px-3 text-sm text-slate-900 outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-[#091525] dark:text-white"
                                         >
                                             <option value="good">
                                                 Bon état
@@ -1892,9 +1892,9 @@
                                     {/* Notes */}
 
                                     <div>
-                                        <label className="mb-2 block text-sm font-medium text-slate-300">
+                                        <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
                                             Notes
-                                            <span className="ml-1 text-slate-600">
+                                            <span className="ml-1 text-slate-400 dark:text-slate-600">
                                                 (optionnel)
                                             </span>
                                         </label>
@@ -1907,7 +1907,7 @@
                                                 )
                                             }
                                             placeholder="Ex. couverture légèrement déchirée..."
-                                            className="h-11 border-slate-700 bg-[#091525] text-white placeholder:text-slate-500"
+                                            className="h-11 border-slate-300 bg-slate-100 text-slate-900 placeholder:text-slate-500 dark:border-slate-700 dark:bg-[#091525] dark:text-white"
                                         />
                                     </div>
 

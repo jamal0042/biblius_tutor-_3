@@ -1,19 +1,23 @@
-    import { ArrowLeft, BookOpen, Calendar, Globe, Hash, CheckCircle, Clock, Users } from "lucide-react"
-    import { Badge } from "@/components/ui/badge"
-    import { Card, CardContent } from "@/components/ui/card"
-    import Link from "next/link"
-    import { createServerSupabaseClient } from "@/lib/supabase/server"
-    import { notFound } from "next/navigation"
-    import BookActions from "@/components/catalogue/book-actions"
+import { ArrowLeft, BookOpen, Calendar, Globe, Hash, CheckCircle, Clock, Users, Bookmark } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent } from "@/components/ui/card"
+import Link from "next/link"
+import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { notFound } from "next/navigation"
+import BookActions from "@/components/catalogue/book-actions"
 
-    interface SimilarBook {
+interface Contributor {
+    name: string
+    role: string
+}
+
+interface SimilarBook {
     id: string
     title: string
-    author: string
     type: string
     }
 
-    export default async function BookDetailPage(props: { params: Promise<{ id: string }> }) {
+export default async function BookDetailPage(props: { params: Promise<{ id: string }> }) {
     const params = await props.params
     const bookId = params.id
     const supabase = await createServerSupabaseClient()
@@ -30,9 +34,25 @@
 
     const isAvailable = (book.exemplaires_disponibles || 0) > 0
 
+    const { data: rawContributors } = await supabase
+        .from("document_auteurs")
+        .select("author_order, role, auteurs(name)")
+        .eq("document_id", bookId)
+        .order("author_order", { ascending: true })
+
+    const contributors: Contributor[] = (rawContributors || []).map((c: Record<string, unknown>) => {
+        const auteur = (c as { auteurs?: { name?: string } | null }).auteurs
+        return {
+        name: auteur?.name || "Auteur inconnu",
+        role: (c as { role?: string }).role || "principal",
+        }
+    })
+
+    const authorDisplay = contributors.map((c) => c.name).join(", ") || "Auteur inconnu"
+
     const { data: similarBooks } = await supabase
         .from("documents")
-        .select("id, title, author, type")
+        .select("id, title, type")
         .neq("id", bookId)
         .limit(3)
 
@@ -70,7 +90,15 @@
             <div className="lg:col-span-2 space-y-6">
             <div>
                 <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{book.title}</h1>
-                <p className="text-xl text-slate-600 dark:text-slate-400">par <span className="font-medium text-amber-600 dark:text-amber-500">{book.author}</span></p>
+                <p className="text-xl text-slate-600 dark:text-slate-400">
+                par <span className="font-medium text-amber-600 dark:text-amber-500">{authorDisplay}</span>
+                </p>
+                {book.cote_complete && (
+                <div className="mt-3 inline-flex items-center gap-2 rounded-lg border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-3 py-1.5">
+                    <Bookmark className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                    <span className="font-mono text-sm font-semibold text-amber-800 dark:text-amber-300">{book.cote_complete}</span>
+                </div>
+                )}
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-6 border-y border-slate-200 dark:border-slate-800">
@@ -119,7 +147,6 @@
                         <BookOpen className="w-12 h-12 text-slate-300 dark:text-slate-600" />
                         </div>
                         <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-500 transition-colors line-clamp-1">{similar.title}</h3>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">{similar.author}</p>
                         <div className="mt-auto">
                         <Badge variant="outline" className="border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-xs capitalize">
                             {getTypeLabel(similar.type)}

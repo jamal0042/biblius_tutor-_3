@@ -12,7 +12,12 @@
         import Image from "next/image"
 
         import { createClient } from "@/lib/supabase/client"
-        import { saveDocumentAuthors } from "@/lib/authors"
+        import { saveDocumentContributors } from "@/lib/contributors"
+        import type { Contributor } from "@/lib/contributors"
+        import { genererCoteComplete } from "@/lib/dewey"
+        import { DeweyPicker } from "@/components/cataloging/dewey-picker"
+        import { ContributionList } from "@/components/cataloging/contribution-list"
+        import { LocationPicker } from "@/components/cataloging/location-picker"
 
         import {
         AlertCircle,
@@ -23,6 +28,7 @@
         ImagePlus,
         Info,
         Loader2,
+        MapPin,
         Save,
         Trash2,
         Upload,
@@ -62,6 +68,10 @@
         title: string
         subtitle: string
         isbn: string
+        issn: string
+        doi: string
+        edition: string
+        collection: string
         publisher: string
         year: string
         type: DocumentType
@@ -133,7 +143,7 @@
         const [error, setError] = useState<string | null>(null)
         const [success, setSuccess] = useState(false)
 
-        const [authorsInput, setAuthorsInput] = useState("")
+        const [contributors, setContributors] = useState<Contributor[]>([])
 
         const [coverFile, setCoverFile] = useState<File | null>(null)
         const [coverPreview, setCoverPreview] = useState<string | null>(null)
@@ -141,10 +151,18 @@
         const [selectedDigitalFile, setSelectedDigitalFile] =
             useState<File | null>(null)
 
+        const [cote_dewey, setCoteDewey] = useState("")
+        const [cote_libelle, setCoteLibelle] = useState("")
+        const [locationId, setLocationId] = useState<string | null>(null)
+
         const [formData, setFormData] = useState<FormData>({
             title: "",
             subtitle: "",
             isbn: "",
+            issn: "",
+            doi: "",
+            edition: "",
+            collection: "",
             publisher: "",
             year: new Date().getFullYear().toString(),
             type: "book",
@@ -381,8 +399,8 @@
             return "Le titre du document est obligatoire."
             }
 
-            if (!authorsInput.trim()) {
-            return "Veuillez saisir au moins un auteur."
+            if (contributors.length === 0) {
+            return "Veuillez ajouter au moins un contributeur."
             }
 
             if (!coverFile) {
@@ -641,6 +659,26 @@
                 keywords:
                     formData.keywords.trim() || null,
 
+                edition:
+                    formData.edition.trim() || null,
+
+                issn:
+                    formData.issn.trim() || null,
+
+                doi:
+                    formData.doi.trim() || null,
+
+                collection:
+                    formData.collection.trim() || null,
+
+                cote_dewey: cote_dewey || null,
+                dewey_code: cote_dewey || null,
+                cote_complete: genererCoteComplete(
+                    cote_dewey || null,
+                    contributors[0]?.name || "",
+                    formData.year,
+                ) || null,
+
                 cover_url: coverUrl,
 
                 format,
@@ -688,13 +726,34 @@
 
 
             /* ---------------------------------------------
-                AUTEURS
+                CONTRIBUTEURS
             --------------------------------------------- */
 
-            await saveDocumentAuthors(
+            await saveDocumentContributors(
                 doc.id,
-                authorsInput.trim()
+                contributors
             )
+
+            /* ---------------------------------------------
+                CLASSIFICATION LOG (audit)
+            --------------------------------------------- */
+
+            if (cote_dewey) {
+                try {
+                await supabase
+                    .from("classification_log")
+                    .insert({
+                    document_id: doc.id,
+                    source: "manual",
+                    status: "validated",
+                    proposed_code: cote_dewey,
+                    proposed_libelle: cote_libelle || null,
+                    validated_code: cote_dewey,
+                    })
+                } catch {
+                // journal d'audit non bloquant
+                }
+            }
 
 
             /* ---------------------------------------------
@@ -768,6 +827,16 @@
                         ).toUpperCase()}-${String(
                         index + 1
                         ).padStart(3, "0")}`,
+
+                    cote_complete:
+                        genererCoteComplete(
+                        cote_dewey || null,
+                        contributors[0]?.name || "",
+                        formData.year,
+                        ) || null,
+
+                    location_id:
+                        locationId || null,
 
                     status:
                         "available",
@@ -1080,31 +1149,20 @@
                         </div>
 
 
-                        {/* AUTEURS */}
+                        {/* CONTRIBUTEURS */}
 
                         <div className="space-y-2">
 
-                        <Label
-                            htmlFor="authors"
-                            className="flex items-center gap-2"
-                        >
+                        <Label className="flex items-center gap-2">
                             <UserRound className="h-4 w-4 text-amber-500" />
-                            Auteur(s)
+                            Contributeurs (auteurs, encadreur, directeur…)
                         </Label>
 
-                        <Input
-                            id="authors"
-                            value={authorsInput}
-                            onChange={(e) =>
-                            setAuthorsInput(e.target.value)
-                            }
-                            placeholder="Ex. Jean Dupont, Marie Kabila"
-                            required
+                        <ContributionList
+                            contributors={contributors}
+                            onChange={setContributors}
+                            hint="Ajoutez les auteurs dans l'ordre ; pour un projet tutoré, ajoutez aussi l'encadreur"
                         />
-
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                            Séparez plusieurs auteurs par des virgules.
-                        </p>
 
                         </div>
 
@@ -1156,6 +1214,57 @@
                             max={new Date().getFullYear() + 1}
                             value={formData.year}
                             onChange={handleChange}
+                            />
+                        </div>
+
+                        </div>
+
+
+                        {/* IDENTIFIANTS / COLLECTION */}
+
+                        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+
+                        <div className="space-y-2">
+                            <Label htmlFor="issn">ISSN</Label>
+                            <Input
+                            id="issn"
+                            name="issn"
+                            value={formData.issn}
+                            onChange={handleChange}
+                            placeholder="ISSN (revue…)"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="doi">DOI</Label>
+                            <Input
+                            id="doi"
+                            name="doi"
+                            value={formData.doi}
+                            onChange={handleChange}
+                            placeholder="10.xxxx/xxxx"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="edition">Édition / Numéro</Label>
+                            <Input
+                            id="edition"
+                            name="edition"
+                            value={formData.edition}
+                            onChange={handleChange}
+                            placeholder="Ex. 2e édition"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="collection">Collection</Label>
+                            <Input
+                            id="collection"
+                            name="collection"
+                            value={formData.collection}
+                            onChange={handleChange}
+                            placeholder="Nom de la collection"
                             />
                         </div>
 
@@ -1297,6 +1406,100 @@
 
                         </div>
 
+                    </CardContent>
+
+                    </Card>
+
+
+                    {/* ---------------------------------------------
+                    CLASSIFICATION DEWEY
+                    --------------------------------------------- */}
+
+                    <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-3 text-lg">
+
+                        <span className="rounded-lg bg-blue-100 p-2 dark:bg-blue-500/10">
+                            <BookOpen className="h-5 w-5 text-blue-700 dark:text-blue-400" />
+                        </span>
+
+                        <div>
+                            <p className="text-slate-950 dark:text-white">Classification Dewey</p>
+                            <p className="mt-0.5 text-xs font-normal text-slate-500">
+                            Classez le document dans la Classification Décimale de Dewey.
+                            </p>
+                        </div>
+
+                        </CardTitle>
+                    </CardHeader>
+
+                    <CardContent className="space-y-4">
+
+                        <DeweyPicker
+                        value={cote_dewey || null}
+                        libelle={cote_libelle || null}
+                        onChange={(code, libelle) => {
+                            setCoteDewey(code)
+                            setCoteLibelle(libelle)
+                        }}
+                        documentContext={{
+                            title: formData.title,
+                            subtitle: formData.subtitle,
+                            type: formData.type,
+                            description: formData.description,
+                            keywords: formData.keywords,
+                        }}
+                        />
+
+                        {cote_dewey && (
+                        <div className="rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-3">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+                            Cote complète suggérée
+                            </p>
+                            <p className="mt-1 font-mono text-lg font-semibold text-slate-900 dark:text-white">
+                            {genererCoteComplete(cote_dewey, contributors[0]?.name || "", formData.year) || "—"}
+                            </p>
+                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                            {cote_dewey} (classification) + Cutter (auteur) + année. Modifiable dans la fiche.
+                            </p>
+                        </div>
+                        )}
+
+                    </CardContent>
+
+                    </Card>
+
+
+                    {/* ---------------------------------------------
+                    LOCALISATION
+                    --------------------------------------------- */}
+
+                    <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-3 text-lg">
+
+                        <span className="rounded-lg bg-blue-100 p-2 dark:bg-blue-500/10">
+                            <MapPin className="h-5 w-5 text-blue-700 dark:text-blue-400" />
+                        </span>
+
+                        <div>
+                            <p className="text-slate-950 dark:text-white">Localisation physique</p>
+                            <p className="mt-0.5 text-xs font-normal text-slate-500">
+                            Salle, section, rayon ou étagère de rangement.
+                            </p>
+                        </div>
+
+                        </CardTitle>
+                    </CardHeader>
+
+                    <CardContent>
+                        <LocationPicker
+                        value={locationId}
+                        onChange={setLocationId}
+                        placeholder="Choisir un emplacement…"
+                        />
                     </CardContent>
 
                     </Card>
@@ -1873,10 +2076,22 @@
                         <div className="space-y-2 border-t border-slate-100 pt-4 dark:border-slate-800">
 
                         <SummaryRow
-                            label="Auteur(s)"
+                            label="Contributeur(s)"
                             value={
-                            authorsInput ||
-                            "Non renseigné"
+                            contributors.length > 0
+                                ? contributors
+                                .map((c) => c.name)
+                                .join(", ")
+                                : "Non renseigné"
+                            }
+                        />
+
+                        <SummaryRow
+                            label="Cote Dewey"
+                            value={
+                            cote_dewey
+                                ? `${cote_dewey}${cote_libelle ? " — " + cote_libelle : ""}`
+                                : "Non classé"
                             }
                         />
 

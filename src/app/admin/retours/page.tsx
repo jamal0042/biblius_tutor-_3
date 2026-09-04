@@ -170,11 +170,11 @@
                 <table className="w-full">
                     <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
                     <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Livre</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Membre</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Date de retour prévue</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Jours de retard</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Statut</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Livre</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Membre</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Date de retour prévue</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Jours de retard</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Statut</th>
                     </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
@@ -237,13 +237,13 @@
                 <table className="w-full">
                     <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
                     <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Livre</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Membre</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Date de retour</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Retard</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Pénalité</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">État</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Notes</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Livre</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Membre</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Date de retour</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Retard</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Pénalité</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">État</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Notes</th>
                     </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 dark:divide-slate-700">

@@ -355,19 +355,19 @@
                         <table className="w-full">
                             <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">
                                 Document
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">
                                 Emprunté
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">
                                 Retourné
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">
                                 État
                                 </th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">
+                                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">
                                 Pénalité
                                 </th>
                             </tr>
