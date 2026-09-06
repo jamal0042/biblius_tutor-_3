@@ -212,7 +212,7 @@ export default function InviteMemberPage() {
             </Card>
         )}
 
-        {/* ==== FORMULAIRE D'INVITATION ==== */}
+        
         <form onSubmit={handleSubmit} className="space-y-6">
             <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
             <CardContent className="p-6 space-y-6">
@@ -234,10 +234,10 @@ export default function InviteMemberPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                    <Label htmlFor="email">Email *</Label>
+                    <Label htmlFor="email">Email </Label>
                     <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <Input id="email" name="email" type="email" value={formData.email} onChange={handleChange} placeholder="jean.kabila@exemple.com" className="pl-10" required />
+                    <Input id="email" name="email" type="email" value={formData.email} onChange={handleChange} placeholder="nom.postnom@exemple.com" className="pl-10" required />
                     </div>
                 </div>
                 <div className="space-y-2">
@@ -264,7 +264,7 @@ export default function InviteMemberPage() {
                 </div>
 
                 <div className="space-y-2">
-                <Label htmlFor="role">Rôle *</Label>
+                <Label htmlFor="role">Rôle </Label>
                 <select
                     id="role"
                     name="role"
@@ -337,7 +337,7 @@ export default function InviteMemberPage() {
             </div>
         </form>
 
-        {/* ==== LISTE DES INVITATIONS ==== */}
+        
         <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
             <CardContent className="p-6">
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-4">

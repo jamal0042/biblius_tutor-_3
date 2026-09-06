@@ -28,7 +28,7 @@ interface LoanData {
     due_date: string
     loan_date: string
     members: { first_name: string; last_name: string } | null
-    exemplaires: { documents: { title: string }[] | null } | null
+    exemplaires: { documents: { title: string }[] | null }[] | null
 }
 
 interface ReceptionStats {
@@ -103,7 +103,7 @@ export default function ReceptionPage() {
 
     return (
         <div className="space-y-8">
-            {/* Header */}
+            
             <section className="relative overflow-hidden rounded-2xl border border-blue-200 bg-gradient-to-br from-white via-blue-50/60 to-amber-50/50 p-6 shadow-lg shadow-blue-500/5 sm:p-8 dark:border-slate-800 dark:from-slate-900 dark:via-slate-900/60 dark:to-slate-900">
                 <div className="absolute right-0 top-0 h-48 w-48 rounded-full bg-amber-500/10 blur-3xl" />
                 <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
@@ -133,7 +133,7 @@ export default function ReceptionPage() {
                 </div>
             </section>
 
-            {/* Stats */}
+            
             <section className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                 <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
                     <CardContent className="p-4">
@@ -192,7 +192,7 @@ export default function ReceptionPage() {
                 </Card>
             </section>
 
-            {/* Quick actions */}
+            
             <section>
                 <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">Actions rapides</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -254,7 +254,7 @@ export default function ReceptionPage() {
                 </div>
             </section>
 
-            {/* Recent loans */}
+            
             <section>
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Emprunts récents</h2>
@@ -277,7 +277,7 @@ export default function ReceptionPage() {
                                 const memberName = loan.members
                                     ? `${loan.members.first_name} ${loan.members.last_name}`
                                     : "Membre inconnu"
-                                const bookTitle = loan.exemplaires?.[0]?.documents?.title || "Document inconnu"
+                                const bookTitle = loan.exemplaires?.[0]?.documents?.[0]?.title || "Document inconnu"
                                 const isOverdue = loan.status === "overdue"
 
                                 return (

@@ -62,7 +62,7 @@
         return rel
         }
 
-        function getAuthorName(doc: DocumentInfo | null): string {
+        function getAuthorName(doc: DocumentInfo | null | undefined): string {
         if (!doc) return "Auteur inconnu"
         return toSingle(doc.auteurs)?.name || "Auteur inconnu"
         }
@@ -145,7 +145,7 @@
                     prets: {
                         loan_date: p.loan_date,
                         due_date: p.due_date,
-                        documents: p.exemplaires?.[0]?.documents,
+                        documents: p.exemplaires?.[0]?.documents ?? null,
                         exemplaires: p.exemplaires,
                     },
                 }))
@@ -200,7 +200,7 @@
 
         return (
             <div className="max-w-6xl mx-auto space-y-6">
-            {/* En-tête */}
+            
             <div className="flex items-center gap-4">
                 <Link href="/dashboard">
                 <Button variant="ghost" size="icon">
@@ -217,7 +217,7 @@
                 </div>
             </div>
 
-            {/* Statistiques rapides */}
+            
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <StatCard
                 icon={BookOpen}
@@ -251,7 +251,7 @@
                 </div>
             ) : (
                 <>
-                {/* ========== EMPRUNTS EN COURS ========== */}
+                
                 <section className="space-y-4">
                     <h2 className="text-xl font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                     <Clock className="w-5 h-5 text-blue-500" />
@@ -352,7 +352,7 @@
                     )}
                 </section>
 
-                {/* ========== HISTORIQUE DES RETOURS ========== */}
+                
                 <section className="space-y-4 pt-6">
                     <h2 className="text-xl font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                     <History className="w-5 h-5 text-amber-500" />
@@ -460,7 +460,7 @@
                     )}
                 </section>
 
-                {/* Alerte pénalités impayées */}
+                
                 {totalPenalties > 0 && (
                     <Card className="bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30">
                     <CardContent className="flex items-center gap-4 p-4">

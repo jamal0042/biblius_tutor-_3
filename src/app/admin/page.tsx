@@ -15,7 +15,7 @@ interface LoanData {
   due_date: string
   loan_date: string
   members: { first_name: string; last_name: string } | null
-  exemplaires: { documents: { title: string }[] | null } | null
+  exemplaires: { documents: { title: string }[] | null }[] | null
 }
 
 interface AdminStats {
@@ -77,7 +77,7 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-8 bg-slate-50 p-1 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      {/* Bandeau d'intro */}
+      
       <section className="relative overflow-hidden rounded-2xl border border-blue-200 bg-gradient-to-br from-white via-blue-50/60 to-amber-50/50 p-6 shadow-lg shadow-blue-500/5 sm:p-8 dark:border-slate-800 dark:from-slate-900 dark:via-slate-900/60 dark:to-slate-900">
         <div className="absolute right-0 top-0 h-48 w-48 rounded-full bg-amber-500/10 blur-3xl" />
         <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
@@ -95,7 +95,7 @@ export default function AdminDashboardPage() {
         </div>
       </section>
 
-      {/* Vue d'ensemble */}
+      
       <section>
         <div className="mb-4">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Vue d&apos;ensemble</h2>
@@ -109,7 +109,7 @@ export default function AdminDashboardPage() {
         </div>
       </section>
 
-      {/* Actions rapides */}
+      
       <section>
         <div className="mb-4">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Actions rapides</h2>
@@ -124,7 +124,7 @@ export default function AdminDashboardPage() {
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[1.5fr_0.8fr]">
-        {/* Emprunts récents */}
+        
         <Card className={`overflow-hidden ${surface} text-slate-900 dark:text-white`}>
           <div className={`flex items-center justify-between border-b border-slate-200 px-6 py-5 dark:border-slate-800`}>
             <div>
@@ -145,7 +145,7 @@ export default function AdminDashboardPage() {
                       <div className="flex min-w-0 items-center gap-3">
                         <div className="hidden h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10 sm:flex"><BookOpen className="h-5 w-5 text-amber-600 dark:text-amber-400" /></div>
                         <div className="min-w-0">
-                          <p className="truncate font-medium text-slate-900 dark:text-white">{loan.exemplaires?.[0]?.documents?.title || "Document inconnu"}</p>
+                          <p className="truncate font-medium text-slate-900 dark:text-white">{loan.exemplaires?.[0]?.documents?.[0]?.title || "Document inconnu"}</p>
                           <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">{loan.members ? `${loan.members.first_name} ${loan.members.last_name}` : "Membre inconnu"}</p>
                         </div>
                       </div>
@@ -161,7 +161,7 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
 
-        {/* État de la bibliothèque */}
+        
         <Card className={`${surface} text-slate-900 dark:text-white`}>
           <div className={`border-b border-slate-200 px-6 py-5 dark:border-slate-800`}>
             <div className="flex items-center gap-3">
@@ -186,7 +186,7 @@ export default function AdminDashboardPage() {
         </Card>
       </div>
 
-      {/* Bandeau bas */}
+      
       <div className={`flex flex-col items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-5 sm:flex-row dark:border-slate-800 dark:bg-slate-900`}>
         <div>
           <p className="font-medium text-slate-900 dark:text-white">Besoin de gérer les emprunts ?</p>

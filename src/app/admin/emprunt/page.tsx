@@ -131,9 +131,6 @@
     export default function AdminEmpruntPage() {
         const supabase = createClient()
 
-        /* =========================================================
-        DONNÉES
-        ========================================================= */
 
         const [members, setMembers] = useState<MemberOption[]>([])
         const [documents, setDocuments] = useState<DocumentData[]>([])
@@ -145,32 +142,20 @@
         const [loading, setLoading] = useState(true)
         const [saving, setSaving] = useState(false)
 
-        /* =========================================================
-        FORMULAIRE
-        ========================================================= */
 
         const [memberId, setMemberId] = useState("")
         const [documentId, setDocumentId] = useState("")
         const [barcodeInput, setBarcodeInput] = useState("")
         const [dueDate, setDueDate] = useState(getDefaultDueDate())
 
-        /* =========================================================
-        PANIER D'EMPRUNTS
-        ========================================================= */
 
         const [pendingLoans, setPendingLoans] = useState<
             ExemplaireOption[]
         >([])
 
-        /* =========================================================
-        RECHERCHE
-        ========================================================= */
 
         const [exemplaireSearch, setExemplaireSearch] = useState("")
 
-        /* =========================================================
-        RETOUR
-        ========================================================= */
 
         const [returnLoan, setReturnLoan] =
             useState<ActiveLoan | null>(null)
@@ -181,9 +166,6 @@
         const selectedMember =
             members.find((m) => m.id === memberId) || null
 
-        /* =========================================================
-        CHARGEMENT
-        ========================================================= */
 
         const loadData = useCallback(async () => {
             setLoading(true)
@@ -299,9 +281,6 @@
             return () => window.clearTimeout(timeout)
         }, [loadData])
 
-        /* =========================================================
-        EXEMPLAIRES FILTRÉS
-        ========================================================= */
 
         const filteredExemplaires = documentId
             ? availableExemplaires.filter(
@@ -323,9 +302,6 @@
             )
         })
 
-        /* =========================================================
-        PANIER
-        ========================================================= */
 
         const isPending = (id: string) =>
             pendingLoans.some((loan) => loan.id === id)
@@ -374,9 +350,6 @@
             setPendingLoans([])
         }
 
-        /* =========================================================
-        RECHERCHE CODE-BARRES
-        ========================================================= */
 
         const handleBarcodeSearch = () => {
             const trimmed = barcodeInput.trim()
@@ -401,9 +374,6 @@
             setBarcodeInput("")
         }
 
-        /* =========================================================
-        CHANGEMENT DE MEMBRE
-        ========================================================= */
 
         const handleMemberChange = (
             newMemberId: string
@@ -424,9 +394,6 @@
             setMemberId(newMemberId)
         }
 
-        /* =========================================================
-        CONFIRMATION DES EMPRUNTS
-        ========================================================= */
 
         const handleConfirmLoans = async () => {
             if (!memberId) {
@@ -453,10 +420,7 @@
             setSaving(true)
 
             try {
-                /*
-                * Vérification réelle en base du nombre
-                * d'emprunts actifs du membre.
-                */
+                
                 const { count, error: countError } =
                     await supabase
                         .from("prets")
@@ -500,10 +464,7 @@
                     .toISOString()
                     .split("T")[0]
 
-                /*
-                * Création de tous les prêts
-                * en une seule opération.
-                */
+                
                 const loanRows = pendingLoans.map(
                     (ex) => ({
                         member_id: memberId,
@@ -524,9 +485,7 @@
                     throw loanError
                 }
 
-                /*
-                * Passage des exemplaires à "loaned".
-                */
+                
                 const exemplaireIds =
                     pendingLoans.map(
                         (ex) => ex.id
@@ -548,9 +507,7 @@
                     throw exemplaireError
                 }
 
-                /*
-                * Nettoyage du formulaire.
-                */
+                
                 setPendingLoans([])
                 setMemberId("")
                 setDocumentId("")
@@ -585,9 +542,6 @@
             }
         }
 
-        /* =========================================================
-        RETOUR
-        ========================================================= */
 
         const handleReturn = async () => {
             if (!returnLoan) return
@@ -613,9 +567,7 @@
                     throw returnError
                 }
 
-                /*
-                * Mise à jour du prêt.
-                */
+                
                 const {
                     error: pretError,
                 } = await supabase
@@ -632,9 +584,7 @@
                     throw pretError
                 }
 
-                /*
-                * Mise à jour de l'exemplaire.
-                */
+                
                 let newStatus = "available"
 
                 if (condition === "damaged") {
@@ -683,9 +633,6 @@
             }
         }
 
-        /* =========================================================
-        PROLONGATION
-        ========================================================= */
 
         const handleExtend = async (
             loan: ActiveLoan
@@ -759,17 +706,11 @@
                 0
             )
 
-        /* =========================================================
-        INTERFACE
-        ========================================================= */
 
         return (
             <main className="min-h-full bg-slate-50 text-slate-900 dark:bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.18),transparent_24%),radial-gradient(circle_at_bottom_right,_rgba(168,85,247,0.12),transparent_30%),linear-gradient(180deg,#020817_0%,#0f172a_100%)] dark:text-slate-100">
                 <div className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8">
 
-                    {/* =====================================================
-                        HEADER
-                    ===================================================== */}
 
                     <header className="mb-6 overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_30px_80px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-white/[0.04] dark:shadow-[0_30px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl">
 
@@ -829,7 +770,6 @@
                             </div>
                         </div>
 
-                        {/* Barre d'étapes */}
 
                         <div className="border-t border-slate-200 bg-slate-100 px-5 py-3 dark:border-white/10 dark:bg-slate-950/40">
                             <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -874,21 +814,12 @@
                         </div>
                     </header>
 
-                    {/* =====================================================
-                        ZONE PRINCIPALE
-                    ===================================================== */}
 
                     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_390px]">
 
-                        {/* =================================================
-                            COLONNE PRINCIPALE
-                        ================================================= */}
 
                         <div className="space-y-6">
 
-                            {/* ---------------------------------------------
-                                1. CONFIGURATION
-                            --------------------------------------------- */}
 
                             <Card className="overflow-hidden border border-slate-200 bg-white text-slate-900 dark:border-white/10 dark:bg-slate-900/70 dark:text-white dark:shadow-[0_20px_60px_rgba(15,23,42,0.4)] backdrop-blur-sm">
 
@@ -914,7 +845,6 @@
 
                                     <div className="grid gap-5 md:grid-cols-2">
 
-                                        {/* Membre */}
 
                                         <div>
                                             <label className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -947,7 +877,6 @@
                                             </select>
                                         </div>
 
-                                        {/* Date */}
 
                                         <div>
                                             <label className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -968,7 +897,6 @@
                                         </div>
                                     </div>
 
-                                    {/* Informations membre */}
 
                                     {selectedMember && (
                                         <div className="mt-5 grid gap-3 rounded-xl border border-sky-500/20 bg-sky-500/5 p-4 sm:grid-cols-3">
@@ -1018,9 +946,6 @@
                                 </CardContent>
                             </Card>
 
-                            {/* ---------------------------------------------
-                                2. RECHERCHE EXEMPLAIRES
-                            --------------------------------------------- */}
 
                             <Card className="overflow-hidden border border-slate-200 bg-white text-slate-900 dark:border-white/10 dark:bg-slate-900/70 dark:text-white dark:shadow-[0_20px_60px_rgba(15,23,42,0.42)]">
 
@@ -1053,7 +978,6 @@
 
                                 <CardContent className="p-0">
 
-                                    {/* Recherche */}
 
                                     <div className="border-b border-slate-200 p-4 dark:border-slate-800">
 
@@ -1098,7 +1022,6 @@
                                             </select>
                                         </div>
 
-                                        {/* Scanner */}
 
                                         <div className="mt-3 flex gap-2">
                                             <Input
@@ -1133,7 +1056,6 @@
                                         </div>
                                     </div>
 
-                                    {/* Liste */}
 
                                     {loading ? (
                                         <div className="flex items-center justify-center gap-2 p-10 text-sm text-slate-600 dark:text-slate-400">
@@ -1262,9 +1184,6 @@
                             </Card>
                         </div>
 
-                        {/* =================================================
-                            PANIER
-                        ================================================= */}
 
                         <div className="xl:sticky xl:top-5 xl:self-start">
 
@@ -1325,7 +1244,6 @@
                                     ) : (
                                         <div className="space-y-3">
 
-                                            {/* Membre */}
 
                                             <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 p-3">
                                                 <div className="flex items-center gap-3">
@@ -1346,7 +1264,6 @@
                                                 </div>
                                             </div>
 
-                                            {/* Livres */}
 
                                             <div className="max-h-[430px] space-y-2 overflow-y-auto pr-1">
 
@@ -1423,7 +1340,6 @@
                                                 )}
                                             </div>
 
-                                            {/* Résumé */}
 
                                             <div className="border-t border-slate-200 pt-4 dark:border-slate-800">
 
@@ -1527,9 +1443,6 @@
                         </div>
                     </div>
 
-                    {/* =====================================================
-                        EMPRUNTS EN COURS
-                    ===================================================== */}
 
                     <Card className="mt-6 overflow-hidden border border-slate-200 bg-white text-slate-900 dark:border-white/10 dark:bg-slate-900/70 dark:text-white dark:shadow-[0_20px_60px_rgba(15,23,42,0.42)]">
 
@@ -1758,9 +1671,6 @@
                         </CardContent>
                     </Card>
 
-                    {/* =====================================================
-                        MODAL RETOUR
-                    ===================================================== */}
 
                     {returnLoan && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
@@ -1804,7 +1714,6 @@
 
                                 <CardContent className="space-y-5 p-5">
 
-                                    {/* Livre */}
 
                                     <div className="rounded-xl border border-slate-300 bg-slate-100 p-4 dark:border-slate-700 dark:bg-[#091525]">
 
@@ -1845,7 +1754,6 @@
                                         </div>
                                     </div>
 
-                                    {/* État */}
 
                                     <div>
                                         <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -1877,7 +1785,6 @@
                                         </select>
                                     </div>
 
-                                    {/* Notes */}
 
                                     <div>
                                         <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">

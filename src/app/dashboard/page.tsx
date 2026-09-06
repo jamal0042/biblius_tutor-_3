@@ -224,7 +224,7 @@
                 </div>
                 )}
 
-                {/* 🤖 Carte de présentation du chatbot */}
+                
                 <Card className="bg-gradient-to-br from-amber-500 to-orange-500 border-0 text-white">
                 <CardContent className="p-6">
                     <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
@@ -242,7 +242,7 @@
             </div>
         </main>
 
-        {/* 🤖 Chatbot flottant */}
+        
         <ChatbotWidget memberName={member.first_name} memberId={member.id} />
         </div>
     )
