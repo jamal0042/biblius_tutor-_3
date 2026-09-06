@@ -1620,15 +1620,17 @@
                                                             loan.members
                                                         )
 
-                                                    const doc =
-                                                        toSingle(
-                                                            loan.documents
-                                                        )
-
                                                     const exemplaire =
                                                         toSingle(
                                                             loan.exemplaires
                                                         )
+
+                                                    const doc =
+                                                        exemplaire
+                                                            ? toSingle(
+                                                                  exemplaire.documents
+                                                              )
+                                                            : null
 
                                                     const isOverdue =
                                                         new Date(
@@ -1816,7 +1818,7 @@
                                                 <p className="font-semibold text-slate-900 dark:text-white">
                                                     {
                                                         toSingle(
-                                                            returnLoan.documents
+                                                            toSingle(returnLoan.exemplaires)?.documents
                                                         )?.title
                                                     }
                                                 </p>
@@ -1824,7 +1826,7 @@
                                                 <p className="mt-1 text-sm text-slate-500">
                                                     {getAuthorName(
                                                         toSingle(
-                                                            returnLoan.documents
+                                                            toSingle(returnLoan.exemplaires)?.documents
                                                         )
                                                     )}
                                                 </p>

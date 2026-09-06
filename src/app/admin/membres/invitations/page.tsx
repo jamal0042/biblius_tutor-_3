@@ -224,11 +224,11 @@ export default function InviteMemberPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                     <Label htmlFor="firstName">Prénom *</Label>
-                    <Input id="firstName" name="firstName" value={formData.firstName} onChange={handleChange} placeholder="Jean" required />
+                    <Input id="firstName" name="firstName" value={formData.firstName} onChange={handleChange} placeholder="nom" required />
                 </div>
                 <div className="space-y-2">
-                    <Label htmlFor="lastName">Nom *</Label>
-                    <Input id="lastName" name="lastName" value={formData.lastName} onChange={handleChange} placeholder="Kabila" required />
+                    <Label htmlFor="lastName">Nom </Label>
+                    <Input id="lastName" name="lastName" value={formData.lastName} onChange={handleChange} placeholder="post-nom" required />
                 </div>
                 </div>
 

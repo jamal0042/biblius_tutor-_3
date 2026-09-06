@@ -60,14 +60,16 @@
     }
 
     interface LoanRow {
-    due_date: string
-    documents: {
-        title: string
-        auteurs: AuthorRow[] | AuthorRow | null
-    }[] | {
-        title: string
-        auteurs: AuthorRow[] | AuthorRow | null
-    } | null
+        due_date: string
+        exemplaires: {
+            documents: {
+                title: string
+                auteurs: AuthorRow[] | AuthorRow | null
+            }[] | {
+                title: string
+                auteurs: AuthorRow[] | AuthorRow | null
+            } | null
+        }[] | null
     }
 
     interface PenaltyRow {
@@ -213,12 +215,13 @@
             if (!memberId) return { error: "Utilisateur non connecté" }
             const { data } = await supabase
             .from("prets")
-            .select(`due_date, status, documents (title, auteurs (name))`)
+            .select(`due_date, status, exemplaires (documents (title, auteurs (name)))`)
             .eq("member_id", memberId)
             .in("status", ["active", "overdue"])
 
             return ((data || []) as unknown as LoanRow[]).map((l) => {
-            const doc = Array.isArray(l.documents) ? l.documents[0] : l.documents
+            const docs = l.exemplaires?.[0]?.documents
+            const doc = Array.isArray(docs) ? docs[0] : docs
             const auteur = doc?.auteurs
             const firstAuthor = Array.isArray(auteur) ? auteur[0] : auteur
             return {

@@ -28,7 +28,7 @@ interface LoanData {
     due_date: string
     loan_date: string
     members: { first_name: string; last_name: string } | null
-    documents: { title: string } | null
+    exemplaires: { documents: { title: string }[] | null } | null
 }
 
 interface ReceptionStats {
@@ -67,7 +67,7 @@ export default function ReceptionPage() {
                 supabase.from("prets").select("*", { count: "exact", head: true }).eq("status", "returned").gte("return_date", today),
                 supabase
                     .from("prets")
-                    .select("id, status, due_date, loan_date, members (first_name, last_name), documents (title)")
+                    .select("id, status, due_date, loan_date, members (first_name, last_name), exemplaires (documents (title))")
                     .in("status", ["active", "overdue"])
                     .order("loan_date", { ascending: false })
                     .limit(8),
@@ -277,7 +277,7 @@ export default function ReceptionPage() {
                                 const memberName = loan.members
                                     ? `${loan.members.first_name} ${loan.members.last_name}`
                                     : "Membre inconnu"
-                                const bookTitle = loan.documents?.title || "Document inconnu"
+                                const bookTitle = loan.exemplaires?.[0]?.documents?.title || "Document inconnu"
                                 const isOverdue = loan.status === "overdue"
 
                                 return (

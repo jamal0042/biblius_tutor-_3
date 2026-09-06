@@ -12,7 +12,7 @@
     due_date: string
     return_date: string | null
     status: string
-    documents: { title: string; author: string }[] | null
+    exemplaires: { documents: { title: string; auteurs: { name: string }[] | null }[] | null }[] | null
     }
 
     interface StudentPenalty {
@@ -42,7 +42,7 @@
         
         const { data: loans } = await supabase
         .from("prets")
-        .select(`id, due_date, return_date, status, documents (title, author)`)
+        .select(`id, due_date, return_date, status, exemplaires (documents (title, auteurs (name)))`)
         .order("loan_date", { ascending: false })
 
         const { data: penalties } = await supabase
@@ -161,7 +161,8 @@
                 <div className="space-y-3">
                 {stats.recentLoans.map((loan) => {
                     const isOverdue = new Date(loan.due_date) < new Date() && loan.status !== "returned"
-                    const doc = loan.documents?.[0] // <-- CORRECTION ICI : on prend le premier élément du tableau
+                    const doc = loan.exemplaires?.[0]?.documents?.[0]
+                    const authorName = doc?.auteurs?.[0]?.name || "Auteur inconnu"
                     return (
                     <div key={loan.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
                         <div className="flex-1 min-w-0">
@@ -169,7 +170,7 @@
                             {doc?.title || "Document inconnu"}
                         </p>
                         <p className="text-xs text-slate-500 dark:text-slate-400">
-                            {doc?.author || "Auteur inconnu"}
+                            {authorName}
                         </p>
                         </div>
                         <Badge className={

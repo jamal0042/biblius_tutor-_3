@@ -15,7 +15,7 @@ interface LoanData {
   due_date: string
   loan_date: string
   members: { first_name: string; last_name: string } | null
-  documents: { title: string } | null
+  exemplaires: { documents: { title: string }[] | null } | null
 }
 
 interface AdminStats {
@@ -49,7 +49,7 @@ export default function AdminDashboardPage() {
         supabase.from("exemplaires").select("status"),
         supabase.from("prets").select("*", { count: "exact", head: true }).eq("status", "active"),
         supabase.from("prets").select("*", { count: "exact", head: true }).eq("status", "overdue"),
-        supabase.from("prets").select("id, status, due_date, loan_date, members (first_name, last_name), documents (title)").in("status", ["active", "overdue"]).order("loan_date", { ascending: false }).limit(8),
+        supabase.from("prets").select("id, status, due_date, loan_date, members (first_name, last_name), exemplaires (documents (title))").in("status", ["active", "overdue"]).order("loan_date", { ascending: false }).limit(8),
       ])
       const copyRows = copies.data || []
       setStats({
@@ -145,7 +145,7 @@ export default function AdminDashboardPage() {
                       <div className="flex min-w-0 items-center gap-3">
                         <div className="hidden h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10 sm:flex"><BookOpen className="h-5 w-5 text-amber-600 dark:text-amber-400" /></div>
                         <div className="min-w-0">
-                          <p className="truncate font-medium text-slate-900 dark:text-white">{loan.documents?.title || "Document inconnu"}</p>
+                          <p className="truncate font-medium text-slate-900 dark:text-white">{loan.exemplaires?.[0]?.documents?.title || "Document inconnu"}</p>
                           <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">{loan.members ? `${loan.members.first_name} ${loan.members.last_name}` : "Membre inconnu"}</p>
                         </div>
                       </div>

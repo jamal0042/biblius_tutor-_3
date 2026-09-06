@@ -4,24 +4,36 @@
     import { AlertCircle, CheckCircle, XCircle, BookOpen, Clock } from "lucide-react"
 
     // --- Interfaces strictes ---
+    interface MemberInfo {
+    first_name: string
+    last_name: string
+    email: string
+    }
+
+    interface DocInfoRetour {
+    title: string
+    auteurs: { name: string }[] | null
+    }
+
     interface RetourData {
     id: string
     return_date: string
-    due_date: string
     days_late: number
     penalty_amount: number
     book_condition: string
     notes: string | null
-    members: { first_name: string; last_name: string; email: string }[] | null
-    documents: { title: string; author: string }[] | null
+    prets: {
+        members: MemberInfo[] | null
+        exemplaires: { documents: DocInfoRetour[] | null }[] | null
+    } | null
     }
 
     interface PretEnRetard {
     id: string
     due_date: string
     status: string
-    members: { first_name: string; last_name: string; email: string }[] | null
-    documents: { title: string; author: string }[] | null
+    members: MemberInfo[] | null
+    exemplaires: { documents: DocInfoRetour[] | null }[] | null
     }
 
     export default async function AdminRetoursPage() {

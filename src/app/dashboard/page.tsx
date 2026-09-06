@@ -8,14 +8,16 @@
     import { ChatbotWidget } from "@/components/chatbot"
 
     // Interfaces adaptées à la nouvelle structure (auteurs)
+    interface LoanDoc {
+    title: string
+    auteurs: { name: string }[] | null
+    }
+
     interface LoanData {
     id: string
     due_date: string
     status: string
-    documents: {
-        title: string
-        auteurs: { name: string }[] | null
-    }[] | null
+    exemplaires: { documents: LoanDoc[] | null }[] | null
     }
 
     interface ReservationData {
@@ -31,8 +33,10 @@
     amount: number
     }
 
+    type LoanDocs = LoanDoc[] | null | undefined
+
     // Fonction pour extraire le nom de l'auteur (gère objet ET tableau)
-    function getAuthorName(doc: LoanData["documents"] | ReservationData["documents"] | null | undefined): string {
+    function getAuthorName(doc: LoanDocs | ReservationData["documents"]): string {
     if (!doc) return "Auteur inconnu"
     const d = Array.isArray(doc) ? doc[0] : doc
     if (!d) return "Auteur inconnu"
@@ -40,7 +44,7 @@
     return auteur?.name || "Auteur inconnu"
     }
 
-    function getDocTitle(doc: LoanData["documents"] | ReservationData["documents"] | null | undefined): string {
+    function getDocTitle(doc: LoanDocs | ReservationData["documents"]): string {
     if (!doc) return "Titre inconnu"
     const d = Array.isArray(doc) ? doc[0] : doc
     return d?.title || "Titre inconnu"
@@ -55,7 +59,7 @@
     // 🌟 Requête adaptée : utilise auteurs(name) au lieu de author
     const { data: loans } = await supabase
         .from("prets")
-        .select(`id, due_date, status, documents (title, auteurs (name))`)
+        .select(`id, due_date, status, exemplaires (documents (title, auteurs (name)))`)
         .eq("member_id", member.id)
         .in("status", ["active", "overdue"])
         .order("due_date", { ascending: true })
@@ -147,10 +151,10 @@
                             </div>
                             <div>
                                 <h3 className="font-semibold text-slate-900 dark:text-white">
-                                {getDocTitle(loan.documents)}
+                                {getDocTitle(loan.exemplaires?.[0]?.documents)}
                                 </h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                                {getAuthorName(loan.documents)}
+                                {getAuthorName(loan.exemplaires?.[0]?.documents)}
                                 </p>
                             </div>
                             </div>

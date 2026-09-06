@@ -30,6 +30,7 @@
         }
         interface ExemplaireInfo {
         barcode: string
+        documents?: MaybeArray<DocumentInfo>
         }
 
         interface Loan {
@@ -37,7 +38,6 @@
         loan_date: string
         due_date: string
         status: string
-        documents: MaybeArray<DocumentInfo>
         exemplaires: MaybeArray<ExemplaireInfo>
         }
 
@@ -104,32 +104,51 @@
                     loan_date,
                     due_date,
                     status,
-                    documents (title, auteurs (id, name)),
-                    exemplaires (barcode)
+                    exemplaires (barcode, documents (title, auteurs (id, name)))
                 `)
                 .eq("member_id", member.id)
                 .in("status", ["active", "overdue"])
                 .order("due_date", { ascending: true })
 
                 const { data: returnsData, error: returnsError } = await supabase
-                .from("retours")
+                .from("prets")
                 .select(`
-                    id,
-                    return_date,
-                    days_late,
-                    penalty_amount,
-                    book_condition,
-                    pret_id,
-                    prets (
-                        loan_date,
-                        due_date,
-                        documents (title, auteurs (id, name)),
-                        exemplaires (barcode)
-                    )
+                    loan_date,
+                    due_date,
+                    retours (
+                        id,
+                        return_date,
+                        days_late,
+                        penalty_amount,
+                        book_condition
+                    ),
+                    exemplaires (barcode, documents (title, auteurs (id, name)))
                 `)
                 .eq("member_id", member.id)
-                .order("return_date", { ascending: false })
+                .eq("status", "returned")
+                .order("loan_date", { ascending: false })
                 .limit(50)
+
+                const rawRetours = (returnsData as unknown as Array<{
+                    loan_date: string
+                    due_date: string
+                    retours: { id: string; return_date: string; days_late: number; penalty_amount: number; book_condition: string }[] | null
+                    exemplaires: { barcode: string; documents: MaybeArray<DocumentInfo> }[] | null
+                }>) || []
+                const mappedRetours: Retour[] = rawRetours.map((p) => ({
+                    id: p.retours?.[0]?.id || `${p.loan_date}-${p.due_date}`,
+                    return_date: p.retours?.[0]?.return_date || p.loan_date,
+                    days_late: p.retours?.[0]?.days_late || 0,
+                    penalty_amount: p.retours?.[0]?.penalty_amount || 0,
+                    book_condition: p.retours?.[0]?.book_condition || "good",
+                    pret_id: "",
+                    prets: {
+                        loan_date: p.loan_date,
+                        due_date: p.due_date,
+                        documents: p.exemplaires?.[0]?.documents,
+                        exemplaires: p.exemplaires,
+                    },
+                }))
 
                 if (loansError || returnsError) {
                 const message = loansError?.message || returnsError?.message || ""
@@ -149,7 +168,7 @@
 
                 if (!isCancelled) {
                 setActiveLoans((loansData as unknown as Loan[]) || [])
-                setReturnedLoans((returnsData as unknown as Retour[]) || [])
+                setReturnedLoans(mappedRetours)
                 }
             } catch (err) {
                 console.error("Erreur chargement:", err)
@@ -257,8 +276,8 @@
                     ) : (
                     <div className="space-y-3">
                         {activeLoans.map((loan) => {
-                        const doc = toSingle(loan.documents)
                         const exemplaire = toSingle(loan.exemplaires)
+                        const doc = exemplaire ? toSingle(exemplaire.documents) : null
                         const isOverdue = new Date(loan.due_date) < today
                         const daysRemaining = Math.ceil(
                             (new Date(loan.due_date).getTime() - today.getTime()) /
