@@ -169,7 +169,7 @@
                 <h3 className="font-semibold text-white">Biblius</h3>
                 <p className="text-xs text-white/80 flex items-center gap-1">
                     <Sparkles className="w-3 h-3" />
-                    Assistant IA connecté au catalogue
+                    Assistant IA .Biblius
                 </p>
                 </div>
                 <button

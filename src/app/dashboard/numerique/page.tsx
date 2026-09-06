@@ -4,18 +4,22 @@
     import { isStaff } from "@/lib/roles"
     import { ResourceCardClient, type DigitalResource } from "@/components/resource-card"
 
-    export default async function DigitalResourcesPage() {
+    export default async function DigitalResourcesPage({
+    searchParams,
+    }: {
+    searchParams: Promise<{ open?: string }>
+    }) {
+    const { open } = await searchParams
     const member = await getCurrentMember()
     const supabase = await createServerSupabaseClient()
 
-    // Les auteurs sont liés aux ressources via digital_resources.author_id.
     const selectClause = `
         *,
         documents (title, auteurs (id, name)),
         auteur_direct:auteurs!digital_resources_author_id_fkey (id, name)
     `
 
-    // 1. Mes publications (si connecté)
+    // 1. Mes publications
     let myResources: DigitalResource[] = []
     if (member) {
         const { data: mine } = await supabase
@@ -26,7 +30,7 @@
         myResources = (mine as unknown as DigitalResource[]) || []
     }
 
-    // 2. Ressources visibles selon le rôle
+    // 2. Toutes les ressources
     let query = supabase
         .from("digital_resources")
         .select(selectClause)
@@ -44,7 +48,6 @@
     const { data: resources } = await query
     const allResources = (resources as unknown as DigitalResource[]) || []
 
-    // Éviter les doublons
     const myIds = new Set(myResources.map((r) => r.id))
     const otherResources = allResources.filter((r) => !myIds.has(r.id))
 
@@ -57,7 +60,7 @@
             </p>
         </div>
 
-        {/* SECTION : MES PUBLICATIONS */}
+        {/* MES PUBLICATIONS */}
         {member && myResources.length > 0 && (
             <div className="space-y-4">
             <h2 className="text-xl font-semibold text-slate-900 dark:text-white flex items-center gap-2">
@@ -66,13 +69,13 @@
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {myResources.map((r) => (
-                <ResourceCardClient key={r.id} resource={r} isMine />
+                <ResourceCardClient key={r.id} resource={r} isMine autoOpen={r.id === open} />
                 ))}
             </div>
             </div>
         )}
 
-        {/* SECTION : TOUTES LES RESSOURCES */}
+        {/* TOUTES LES RESSOURCES */}
         <div className="space-y-4">
             {member && myResources.length > 0 && (
             <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
@@ -82,7 +85,7 @@
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {otherResources.length > 0 ? (
                 otherResources.map((r) => (
-                <ResourceCardClient key={r.id} resource={r} />
+                <ResourceCardClient key={r.id} resource={r} autoOpen={r.id === open} />
                 ))
             ) : myResources.length === 0 ? (
                 <div className="col-span-full">

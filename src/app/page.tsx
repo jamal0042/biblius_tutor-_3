@@ -141,7 +141,7 @@ export default async function HomePage() {
             {publicResources.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {publicResources.map((resource) => (
-                  <ResourceCardClient key={resource.id} resource={resource} isAuthenticated={Boolean(member)} />
+                  <ResourceCardClient key={resource.id} resource={resource} />
                 ))}
               </div>
             ) : (

@@ -8,6 +8,7 @@ import { Activity, AlertCircle, ArrowRight, BarChart3, BookOpen, CheckCircle2, C
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { StatCard } from "@/components/dashboard/stat-card"
 
 interface LoanData {
   id: string
@@ -198,27 +199,7 @@ export default function AdminDashboardPage() {
   )
 }
 
-function StatCard({ title, value, description, icon: Icon, tone, danger = false }: { title: string; value: number; description: string; icon: React.ElementType; tone: "blue" | "gold" | "green" | "red"; danger?: boolean }) {
-  const tones: Record<typeof tone, string> = {
-    blue: "bg-sky-500/10 text-sky-600 dark:text-sky-300",
-    gold: "bg-amber-500/10 text-amber-600 dark:text-amber-300",
-    green: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300",
-    red: "bg-red-500/10 text-red-600 dark:text-red-300",
-  }
-  return (
-    <Card className={`border-slate-200 bg-white text-slate-900 transition hover:-translate-y-0.5 hover:border-amber-500/40 dark:border-slate-800 dark:bg-slate-900 dark:text-white ${danger ? "border-red-500/40" : ""}`}>
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between">
-          <div className={`flex h-11 w-11 items-center justify-center rounded-lg ${tones[tone]}`}><Icon className="h-5 w-5" /></div>
-          <ChevronRight className="h-4 w-4 text-slate-300 dark:text-slate-600" />
-        </div>
-        <p className="mt-5 text-sm text-slate-500 dark:text-slate-400">{title}</p>
-        <p className="mt-1 text-3xl font-bold text-slate-900 dark:text-white">{value}</p>
-        <p className="mt-2 text-xs text-slate-500 dark:text-slate-500">{description}</p>
-      </CardContent>
-    </Card>
-  )
-}
+
 
 function QuickAction({ href, icon: Icon, title, description }: { href: string; icon: React.ElementType; title: string; description: string }) {
   return (
