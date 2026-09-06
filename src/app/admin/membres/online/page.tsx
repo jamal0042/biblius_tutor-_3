@@ -36,6 +36,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
+import { toast } from "sonner"
 
 const emptyForm = {
     first_name: "",
@@ -82,7 +83,7 @@ export default function AdminMembersOnlinePage() {
     }, [fetchMembers])
 
     const handleDelete = async (memberId: string) => {
-        if (!confirm("Voulez-vous vraiment supprimer ce membre ?")) return
+        if (!window.confirm("Voulez-vous vraiment supprimer ce membre ?")) return
         setDeletingId(memberId)
         const { error } = await supabase.from("members").delete().eq("id", memberId)
         if (!error) {
@@ -147,7 +148,7 @@ export default function AdminMembersOnlinePage() {
         })
 
         if (authError) {
-            alert(authError.message)
+            toast.error(authError.message)
             return
         }
 
@@ -170,7 +171,7 @@ export default function AdminMembersOnlinePage() {
         })
 
         if (error) {
-            alert(error.message)
+            toast.error(error.message)
             return
         }
 

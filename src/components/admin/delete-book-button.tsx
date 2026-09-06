@@ -3,7 +3,8 @@
     import { useState } from "react"
     import { createClient } from "@/lib/supabase/client"
     import { Trash2, Loader2, AlertTriangle } from "lucide-react"
-    import { Button } from "@/components/ui/button"
+    import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
     import {
     AlertDialog,
     AlertDialogAction,
@@ -42,7 +43,7 @@
         else window.location.reload()
         } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : "Erreur lors de la suppression."
-        alert(errorMessage)
+        toast.error(errorMessage)
         setLoading(false)
         }
     }

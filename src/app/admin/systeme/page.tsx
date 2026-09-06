@@ -8,6 +8,7 @@
     import { Input } from "@/components/ui/input"
     import { Label } from "@/components/ui/label"
     import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+    import { toast } from "sonner"
 
     interface Settings {
     library_name: string
@@ -100,11 +101,11 @@
 
         if (error) throw error
 
+        toast.success("Paramètres enregistrés avec succès.")
         setSuccess(true)
         setTimeout(() => setSuccess(false), 3000)
-        } catch (error) {
-        console.error("Erreur lors de la sauvegarde:", error)
-        alert("Une erreur est survenue lors de la sauvegarde.")
+        } catch {
+        toast.error("Une erreur est survenue lors de la sauvegarde.")
         } finally {
         setLoading(false)
         }

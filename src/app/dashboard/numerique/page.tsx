@@ -16,9 +16,15 @@
     `
 
     // 1. Mes publications (si connecté)
-    const myResources: DigitalResource[] = []
-    // La table digital_resources ne contient pas de colonne uploaded_by.
-    // Les ressources sont donc chargées par leur niveau d'accès ci-dessous.
+    let myResources: DigitalResource[] = []
+    if (member) {
+        const { data: mine } = await supabase
+        .from("digital_resources")
+        .select(selectClause)
+        .eq("uploaded_by", member.id)
+        .order("created_at", { ascending: false })
+        myResources = (mine as unknown as DigitalResource[]) || []
+    }
 
     // 2. Ressources visibles selon le rôle
     let query = supabase

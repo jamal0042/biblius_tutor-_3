@@ -7,6 +7,7 @@
     import { Button } from "@/components/ui/button"
     import { Card, CardContent } from "@/components/ui/card"
     import { Badge } from "@/components/ui/badge"
+import { toast } from "sonner"
 
     interface Penalite {
     id: string
@@ -64,7 +65,7 @@
         if (!error) {
         fetchPenalites()
         } else {
-        alert("Erreur lors de la mise à jour du statut.")
+        toast.error("Erreur lors de la mise à jour du statut.")
         }
         setProcessing(null)
     }

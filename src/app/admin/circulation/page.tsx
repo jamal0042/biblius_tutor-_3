@@ -7,6 +7,8 @@
     import { Badge } from "@/components/ui/badge"
     import { Input } from "@/components/ui/input"
     import { Plus, RotateCcw, X, ScanLine, AlertCircle, BookOpen } from "lucide-react"
+    import { toast } from "sonner"
+    import { toSingle } from "@/lib/supabase/relations"
 
     // 🌟 Interfaces adaptées : toutes les relations sont des tableaux (ce que Supabase renvoie)
     interface MemberData {
@@ -146,12 +148,12 @@
 
     const handleCreateLoan = async () => {
         if (!memberId || !selectedExemplaire || !dueDate) {
-        alert("Veuillez remplir tous les champs et sélectionner un exemplaire disponible.")
+        toast.error("Veuillez remplir tous les champs et sélectionner un exemplaire disponible.")
         return
         }
 
         if (documentId && selectedExemplaire.document_id !== documentId) {
-        alert("L'exemplaire sélectionné ne correspond pas au document choisi.")
+        toast.error("L'exemplaire sélectionné ne correspond pas au document choisi.")
         return
         }
 
@@ -164,13 +166,13 @@
         const selectedMember = members.find((member) => member.id === memberId)
         const loanLimit = selectedMember?.max_loans ?? 5
         if ((count || 0) >= loanLimit) {
-        alert(`Ce membre a atteint sa limite de ${loanLimit} emprunts simultanés.`)
+        toast.error(`Ce membre a atteint sa limite de ${loanLimit} emprunts simultanés.`)
         return
         }
 
         setSaving(true)
 
-        const { error } = await supabase.from("prets").insert({
+        const { error: pretError } = await supabase.from("prets").insert({
         member_id: memberId,
         exemplaire_id: selectedExemplaire.id,
         loan_date: new Date().toISOString().split("T")[0],
@@ -179,12 +181,13 @@
         notified_overdue: false
         })
 
-        if (!error) {
+        if (!pretError) {
         await supabase
             .from("exemplaires")
             .update({ status: "loaned" })
             .eq("id", selectedExemplaire.id)
 
+        toast.success("Emprunt enregistré avec succès.")
         setMemberId("")
         setDocumentId("")
         setBarcodeInput("")
@@ -192,7 +195,7 @@
         setDueDate("")
         await loadData()
         } else {
-        alert("Erreur : " + error.message)
+        toast.error("Erreur : " + pretError.message)
         }
         setSaving(false)
     }
@@ -202,20 +205,65 @@
         setSaving(true)
 
         const today = new Date()
+        const exemplaire = toSingle(returnLoan.exemplaires)
+        const wasOverdue = new Date(returnLoan.due_date) < today
+        const daysLate = wasOverdue
+        ? Math.max(0, Math.floor((today.getTime() - new Date(returnLoan.due_date).getTime()) / (1000 * 60 * 60 * 24)))
+        : 0
 
-        const { error } = await supabase.from("retours").insert({
+        const { error: retourError } = await supabase.from("retours").insert({
         pret_id: returnLoan.id,
         return_date: today.toISOString(),
+        days_late: daysLate,
         book_condition: condition,
         notes: notes || null
         })
 
-        if (error) {
-        alert("Erreur : " + error.message)
+        if (retourError) {
+        toast.error("Erreur : " + retourError.message)
         setSaving(false)
         return
         }
 
+        const { error: pretError } = await supabase
+        .from("prets")
+        .update({ status: "returned" })
+        .eq("id", returnLoan.id)
+
+        if (pretError) {
+        toast.error("Erreur lors de la clôture de l'emprunt : " + pretError.message)
+        setSaving(false)
+        return
+        }
+
+        if (exemplaire) {
+        await supabase
+            .from("exemplaires")
+            .update({ status: "available" })
+            .eq("id", exemplaire.id)
+        }
+
+        if (condition === "lost") {
+        await supabase.from("penalites").insert({
+            member_id: toSingle(returnLoan.members)?.id,
+            pret_id: returnLoan.id,
+            type: "lost",
+            amount: 15000,
+            status: "unpaid",
+            reason: "Livre perdu",
+        })
+        } else if (condition === "damaged") {
+        await supabase.from("penalites").insert({
+            member_id: toSingle(returnLoan.members)?.id,
+            pret_id: returnLoan.id,
+            type: "damage",
+            amount: 5000,
+            status: "unpaid",
+            reason: "Livre endommagé",
+        })
+        }
+
+        toast.success("Retour enregistré. L'emprunt a été clôturé.")
         setReturnLoan(null)
         setCondition("good")
         setNotes("")

@@ -8,6 +8,7 @@
     import { Button } from "@/components/ui/button"
     import jsPDF from "jspdf"
     import autoTable from "jspdf-autotable"
+import { toast } from "sonner"
 
     interface LoanData {
     status: string
@@ -114,6 +115,7 @@
         })
         
         // Section : Indicateurs de performance
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const finalY = (doc as any).lastAutoTable.finalY || 100
         doc.setFontSize(16)
         doc.setTextColor(30, 41, 59)
@@ -165,7 +167,7 @@
         
         } catch (error) {
         console.error("Erreur lors de l'export PDF:", error)
-        alert("Une erreur est survenue lors de la génération du PDF.")
+        toast.error("Une erreur est survenue lors de la génération du PDF.")
         } finally {
         setExporting(false)
         }

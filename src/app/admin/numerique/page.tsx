@@ -5,6 +5,7 @@
     import { createClient } from "@/lib/supabase/client"
     import Link from "next/link"
     import { Plus, Pencil, Trash2, Loader2, Search, ExternalLink } from "lucide-react"
+    import { toast } from "sonner"
     import { Button } from "@/components/ui/button"
     import { Badge } from "@/components/ui/badge"
     import { Card, CardContent } from "@/components/ui/card"
@@ -88,11 +89,6 @@
         .order("created_at", { ascending: false })
 
         if (error) {
-        console.error("Erreur Supabase détaillée:", error.message, {
-            code: error.code,
-            details: error.details,
-            hint: error.hint,
-        })
         // Permet à l'administration de rester accessible avant l'application de la migration.
         const fallback = await supabase
             .from("digital_resources")
@@ -102,13 +98,9 @@
         error = fallback.error
         }
         
-        console.log(" Data reçue:", data)
-        
         if (!error && data) {
         setResources(data as unknown as DigitalResource[])
         }
-    } catch (err) {
-        console.error(" Exception inattendue:", err)
     } finally {
         setLoading(false)
     }
@@ -117,7 +109,7 @@
     useEffect(() => { fetchResources() }, [fetchResources])
 
     const handleDelete = async (id: string, url: string) => {
-        if (!confirm("Êtes-vous sûr de vouloir supprimer cette ressource ? Cette action est irréversible.")) return
+        if (!window.confirm("Êtes-vous sûr de vouloir supprimer cette ressource ? Cette action est irréversible.")) return
         try {
         if (url) {
             try {
@@ -132,10 +124,10 @@
         }
         const { error } = await supabase.from("digital_resources").delete().eq("id", id)
         if (error) throw error
+        toast.success("Ressource supprimée.")
         fetchResources()
-        } catch (err) {
-        console.error(err)
-        alert("Erreur lors de la suppression de la ressource.")
+        } catch {
+        toast.error("Erreur lors de la suppression de la ressource.")
         }
     }
 

@@ -6,21 +6,27 @@
     import { BookOpen, Clock, AlertCircle, CheckCircle, TrendingUp, Calendar } from "lucide-react"
     import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
     import { Badge } from "@/components/ui/badge"
+    import { toSingle, type MaybeArray } from "@/lib/supabase/relations"
 
-    interface StudentLoan {
+    interface AuthorInfo {
+    name: string
+    }
+
+    interface DocInfo {
+    title: string
+    auteurs: MaybeArray<AuthorInfo>
+    }
+
+    interface LoanRow {
     id: string
+    loan_date: string
     due_date: string
     return_date: string | null
     status: string
-    exemplaires: { documents: { title: string; auteurs: { name: string }[] | null }[] | null }[] | null
+    exemplaires: MaybeArray<{ documents: MaybeArray<DocInfo> }>
     }
 
-    interface StudentPenalty {
-    amount: number
-    status: string
-    }
-
-    export default function StudentStatsPage() {
+    export default function AdminStatsPage() {
     const supabase = createClient()
     const [loading, setLoading] = useState(true)
     const [stats, setStats] = useState({
@@ -31,49 +37,56 @@
         totalPenalties: 0,
         unpaidPenalties: 0,
         onTimeRate: 0,
-        recentLoans: [] as StudentLoan[]
+        totalMembers: 0,
+        totalDocuments: 0,
+        recentLoans: [] as LoanRow[]
     })
 
     const fetchStats = useCallback(async () => {
         setLoading(true)
-        // Note: Remplacez 'member.id' par l'ID réel de l'utilisateur connecté si ce composant est dans le dashboard
-        // Pour l'exemple, nous utilisons un ID fictif ou nous supposons que vous avez accès à l'ID via un hook ou props
-        // Si ce fichier est dans /admin, adaptez la logique pour filtrer par un membre spécifique ou montrer les stats globales.
-        
-        const { data: loans } = await supabase
-        .from("prets")
-        .select(`id, due_date, return_date, status, exemplaires (documents (title, auteurs (name)))`)
-        .order("loan_date", { ascending: false })
 
-        const { data: penalties } = await supabase
-        .from("penalites")
-        .select("amount, status")
+        try {
+        const [loansRes, penaltiesRes, membersRes, docsRes] = await Promise.all([
+            supabase
+            .from("prets")
+            .select(`id, loan_date, due_date, return_date, status, exemplaires (documents (title, auteurs (name)))`)
+            .order("loan_date", { ascending: false }),
+            supabase.from("penalites").select("amount, status"),
+            supabase.from("members").select("id, status"),
+            supabase.from("documents").select("id, exemplaires_disponibles")
+        ])
+
+        const loans = (loansRes.data as LoanRow[]) || []
+        const penalties = (penaltiesRes.data as { amount: number; status: string }[]) || []
 
         const today = new Date()
-        const typedLoans = (loans as StudentLoan[]) || []
-        const typedPenalties = (penalties as StudentPenalty[]) || []
+        const totalLoans = loans.length
+        const activeLoans = loans.filter((l) => l.status === "active" && new Date(l.due_date) >= today).length
+        const overdueLoans = loans.filter((l) => l.status === "overdue" || (l.status === "active" && new Date(l.due_date) < today)).length
+        const returnedLoans = loans.filter((l) => l.status === "returned").length
 
-        const totalLoans = typedLoans.length
-        const activeLoans = typedLoans.filter((l) => l.status === "active" && new Date(l.due_date) >= today).length
-        const overdueLoans = typedLoans.filter((l) => l.status === "overdue" || new Date(l.due_date) < today).length
-        const returnedLoans = typedLoans.filter((l) => l.status === "returned").length
-        
-        const totalPenalties = typedPenalties.reduce((acc: number, curr: StudentPenalty) => acc + (curr.amount || 0), 0)
-        const unpaidPenalties = typedPenalties.filter((p) => p.status === "unpaid").reduce((acc: number, curr: StudentPenalty) => acc + (curr.amount || 0), 0)
+        const totalPenalties = penalties.reduce((acc: number, curr) => acc + (curr.amount || 0), 0)
+        const unpaidPenalties = penalties.filter((p) => p.status === "unpaid").reduce((acc: number, curr) => acc + (curr.amount || 0), 0)
+        const onTimeRate = returnedLoans > 0 ? Math.round((returnedLoans / totalLoans) * 100) : 0
 
-        const onTimeRate = totalLoans > 0 ? Math.round((returnedLoans / totalLoans) * 100) : 0
+        const totalMembers = ((membersRes.data as { status: string }[]) || []).length
+        const totalDocuments = ((docsRes.data as unknown[]) || []).length
 
         setStats({
-        totalLoans,
-        activeLoans,
-        overdueLoans,
-        returnedLoans,
-        totalPenalties,
-        unpaidPenalties,
-        onTimeRate,
-        recentLoans: typedLoans.slice(0, 5)
+            totalLoans,
+            activeLoans,
+            overdueLoans,
+            returnedLoans,
+            totalPenalties,
+            unpaidPenalties,
+            onTimeRate,
+            totalMembers,
+            totalDocuments,
+            recentLoans: loans.slice(0, 6)
         })
+        } finally {
         setLoading(false)
+        }
     }, [supabase])
 
     useEffect(() => {
@@ -86,7 +99,7 @@
         <div className="space-y-6">
         <div>
             <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Statistiques</h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1">Vue d&apos;ensemble de l&apos;activité.</p>
+            <p className="text-slate-500 dark:text-slate-400 mt-1">Vue d&apos;ensemble de l&apos;activité de la bibliothèque.</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -111,7 +124,7 @@
                     <span className="text-sm text-slate-500 dark:text-slate-400 mb-1">des emprunts retournés à temps</span>
                 </div>
                 <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3">
-                    <div 
+                    <div
                     className={`h-3 rounded-full transition-all ${stats.onTimeRate >= 80 ? 'bg-emerald-500' : stats.onTimeRate >= 50 ? 'bg-amber-500' : 'bg-red-500'}`}
                     style={{ width: `${stats.onTimeRate}%` }}
                     ></div>
@@ -139,6 +152,12 @@
                     <p className="text-2xl font-bold text-red-600 dark:text-red-500">{stats.unpaidPenalties.toLocaleString()} FCFA</p>
                     </div>
                 </div>
+                <div className="pt-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">
+                    <span>Membres enregistrés</span>
+                    <span className="font-semibold text-slate-900 dark:text-white">{stats.totalMembers}</span>
+                    <span>Documents au catalogue</span>
+                    <span className="font-semibold text-slate-900 dark:text-white">{stats.totalDocuments}</span>
+                </div>
                 </div>
             </CardContent>
             </Card>
@@ -161,21 +180,18 @@
                 <div className="space-y-3">
                 {stats.recentLoans.map((loan) => {
                     const isOverdue = new Date(loan.due_date) < new Date() && loan.status !== "returned"
-                    const doc = loan.exemplaires?.[0]?.documents?.[0]
-                    const authorName = doc?.auteurs?.[0]?.name || "Auteur inconnu"
+                    const exemplaire = toSingle(loan.exemplaires)
+                    const doc = exemplaire ? toSingle(exemplaire.documents) : null
+                    const authorName = doc ? toSingle(doc.auteurs)?.name : "Auteur inconnu"
                     return (
-                    <div key={loan.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <div key={loan.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg gap-3">
                         <div className="flex-1 min-w-0">
-                        <p className="font-medium text-slate-900 dark:text-white truncate">
-                            {doc?.title || "Document inconnu"}
-                        </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                            {authorName}
-                        </p>
+                        <p className="font-medium text-slate-900 dark:text-white truncate">{doc?.title || "Document inconnu"}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{authorName}</p>
                         </div>
                         <Badge className={
-                        loan.status === "returned" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400" : 
-                        isOverdue ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400" : 
+                        loan.status === "returned" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400" :
+                        isOverdue ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400" :
                         "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400"
                         }>
                         {loan.status === "returned" ? "Retourné" : isOverdue ? "En retard" : "En cours"}

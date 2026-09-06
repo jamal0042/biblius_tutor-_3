@@ -5,6 +5,7 @@
     import { createClient } from "@/lib/supabase/client"
     import { BookOpen, CheckCircle, AlertCircle, Loader2, Calendar } from "lucide-react"
     import { Button } from "@/components/ui/button"
+import { toast } from "sonner"
     import {
     Dialog,
     DialogContent,
@@ -88,7 +89,7 @@
         router.refresh()
         } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : "Erreur lors de l'emprunt."
-        alert(errorMessage)
+        toast.error(errorMessage)
         setLoading(false)
         }
     }

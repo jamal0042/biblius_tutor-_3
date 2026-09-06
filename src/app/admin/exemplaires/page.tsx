@@ -7,6 +7,7 @@
     import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
     import { Input } from "@/components/ui/input"
     import { AlertCircle, BookOpen, Plus, RotateCcw, ScanLine, X } from "lucide-react"
+import { toast } from "sonner"
 
     // 🌟 NOUVELLES INTERFACES adaptées à la relation auteurs
     interface MemberData {
@@ -145,7 +146,7 @@
 
     const handleCreateLoan = async () => {
         if (!memberId || !selectedExemplaire || !dueDate) {
-        alert("Veuillez remplir tous les champs et scanner un exemplaire valide.")
+        toast.error("Veuillez remplir tous les champs et scanner un exemplaire valide.")
         return
         }
 
@@ -158,7 +159,7 @@
         const selectedMember = members.find((member) => member.id === memberId)
         const loanLimit = selectedMember?.max_loans ?? 5
         if ((count || 0) >= loanLimit) {
-        alert(`Ce membre a atteint sa limite de ${loanLimit} emprunts simultanés.`)
+        toast.error(`Ce membre a atteint sa limite de ${loanLimit} emprunts simultanés.`)
         return
         }
 
@@ -185,7 +186,7 @@
         setDueDate("")
         await loadData()
         } else {
-        alert("Erreur : " + error.message)
+        toast.error("Erreur : " + error.message)
         }
 
         setSaving(false)
@@ -205,7 +206,7 @@
         })
 
         if (error) {
-        alert("Erreur : " + error.message)
+        toast.error("Erreur : " + error.message)
         setSaving(false)
         return
         }

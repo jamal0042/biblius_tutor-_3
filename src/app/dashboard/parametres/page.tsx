@@ -27,13 +27,6 @@
     const supabase = createClient()
     const { member, loading: authLoading, refreshMember } = useAuth()
 
-    const getStoredBool = (key: string, fallback: boolean) => {
-        if (typeof window === "undefined") return fallback
-
-        const saved = window.localStorage.getItem(key)
-        return saved === null ? fallback : saved === "true"
-    }
-
     // États pour le mot de passe
     const [currentPassword, setCurrentPassword] = useState("")
     const [newPassword, setNewPassword] = useState("")
@@ -49,9 +42,9 @@
     const [profileMessage, setProfileMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
     // États pour les notifications
-    const [notifOverdue, setNotifOverdue] = useState(() => getStoredBool("biblius_notif_overdue", true))
-    const [notifNewBooks, setNotifNewBooks] = useState(() => getStoredBool("biblius_notif_newbooks", true))
-    const [notifReservations, setNotifReservations] = useState(() => getStoredBool("biblius_notif_reservations", true))
+    const [notifOverdue, setNotifOverdue] = useState(() => member?.email_notifications ?? true)
+    const [notifNewBooks, setNotifNewBooks] = useState(() => member?.sms_notifications ?? false)
+    const [notifReservations, setNotifReservations] = useState(() => member?.email_notifications ?? true)
     const [notifLoading, setNotifLoading] = useState(false)
     const [notifMessage, setNotifMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
@@ -92,6 +85,18 @@
         setPasswordLoading(true)
 
         try {
+        // Verify the current password before allowing a change
+        const { error: verifyError } = await supabase.auth.signInWithPassword({
+            email: member.email,
+            password: currentPassword,
+        })
+
+        if (verifyError) {
+            setPasswordMessage({ type: "error", text: "Le mot de passe actuel est incorrect." })
+            setPasswordLoading(false)
+            return
+        }
+
         const { error } = await supabase.auth.updateUser({ password: newPassword })
 
         if (error) throw error
@@ -142,12 +147,19 @@
         setNotifLoading(true)
 
         try {
-        localStorage.setItem("biblius_notif_overdue", String(notifOverdue))
-        localStorage.setItem("biblius_notif_newbooks", String(notifNewBooks))
-        localStorage.setItem("biblius_notif_reservations", String(notifReservations))
+        const { error } = await supabase
+            .from("members")
+            .update({
+            email_notifications: notifOverdue && notifReservations,
+            sms_notifications: notifNewBooks,
+            updated_at: new Date().toISOString(),
+            })
+            .eq("id", member.id)
+
+        if (error) throw error
 
         setNotifMessage({ type: "success", text: "Préférences sauvegardées !" })
-        
+
         setTimeout(() => setNotifMessage(null), 3000)
         } catch {
         setNotifMessage({ type: "error", text: "Erreur lors de la sauvegarde." })

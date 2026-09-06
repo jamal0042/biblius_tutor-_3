@@ -7,6 +7,7 @@
     import { Button } from "@/components/ui/button"
     import { Card, CardContent } from "@/components/ui/card"
     import { Badge } from "@/components/ui/badge"
+    import { toast } from "sonner"
     import { ROLE_LABELS, type Member } from "@/lib/roles"
 
     export default function AdminRequestsPage() {
@@ -35,38 +36,30 @@
 
     const handleApprove = async (memberId: string) => {
         setProcessing(memberId)
-        const member = pendingMembers.find((item) => item.id === memberId)
         const { error } = await supabase.from("members").update({ status: "active", updated_at: new Date().toISOString() }).eq("id", memberId)
 
         if (error) {
-            alert("Erreur lors de la validation.")
+            toast.error("Erreur lors de la validation.")
             setProcessing(null)
             return
         }
 
-        const { error: emailError } = await supabase.auth.resend({
-            type: "signup",
-            email: member?.email ?? "",
-            options: {
-                emailRedirectTo: `${window.location.origin}/auth/callback?next=/login?confirmed=1`,
-            },
-        })
-
-        if (emailError) {
-            setPendingMembers((prev) => prev.filter((m) => m.id !== memberId))
-            alert("La demande a été validée. L’email n’a pas pu être renvoyé ; l’adresse est peut-être déjà confirmée.")
-        } else {
-            setPendingMembers((prev) => prev.filter((m) => m.id !== memberId))
-        }
+        toast.success("Demande validée. Le membre peut maintenant se connecter.")
+        setPendingMembers((prev) => prev.filter((m) => m.id !== memberId))
         setProcessing(null)
     }
 
     const handleReject = async (memberId: string) => {
-        if (!confirm("Voulez-vous vraiment refuser cette demande ? Le compte sera supprimé.")) return
+        const confirmed = window.confirm("Voulez-vous vraiment refuser cette demande ? Le compte sera supprimé.")
+        if (!confirmed) return
         setProcessing(memberId)
         const { error } = await supabase.from("members").delete().eq("id", memberId)
-        if (!error) setPendingMembers((prev) => prev.filter((m) => m.id !== memberId))
-        else alert("Erreur lors du refus.")
+        if (!error) {
+            toast.success("Demande refusée.")
+            setPendingMembers((prev) => prev.filter((m) => m.id !== memberId))
+        } else {
+            toast.error("Erreur lors du refus.")
+        }
         setProcessing(null)
     }
 

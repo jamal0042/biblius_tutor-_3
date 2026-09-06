@@ -170,8 +170,7 @@
                 setActiveLoans((loansData as unknown as Loan[]) || [])
                 setReturnedLoans(mappedRetours)
                 }
-            } catch (err) {
-                console.error("Erreur chargement:", err)
+            } catch {
                 if (!isCancelled) {
                 setActiveLoans([])
                 setReturnedLoans([])

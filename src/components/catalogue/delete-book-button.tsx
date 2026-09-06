@@ -3,16 +3,17 @@
     import { Trash2 } from "lucide-react"
     import { Button } from "@/components/ui/button"
     import { createClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
 
     export function DeleteBookButton({ bookId, bookTitle }: { bookId: string; bookTitle: string }) {
     const handleDelete = async () => {
-        if (!confirm(`Voulez-vous vraiment supprimer "${bookTitle}" ?`)) return
+        if (!window.confirm(`Voulez-vous vraiment supprimer "${bookTitle}" ?`)) return
         
         const supabase = createClient()
         const { error } = await supabase.from("documents").delete().eq("id", bookId)
         
         if (error) {
-        alert("Erreur lors de la suppression")
+        toast.error("Erreur lors de la suppression")
         } else {
         window.location.reload()
         }

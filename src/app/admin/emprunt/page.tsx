@@ -24,6 +24,7 @@
         Loader2,
     } from "lucide-react"
     import Link from "next/link"
+    import { toast } from "sonner"
 
     const EXTENSION_DAYS = 7
 
@@ -310,7 +311,7 @@
             ex: ExemplaireOption
         ) => {
             if (!memberId) {
-                alert(
+                toast.error(
                     "Veuillez d'abord sélectionner un membre."
                 )
                 return
@@ -324,7 +325,7 @@
                 selectedMember?.max_loans ?? 5
 
             if (pendingLoans.length >= maxLoans) {
-                alert(
+                toast.error(
                     `Ce membre ne peut pas avoir plus de ${maxLoans} emprunts.`
                 )
                 return
@@ -363,7 +364,7 @@
             )
 
             if (!found) {
-                alert(
+                toast.error(
                     "Aucun exemplaire disponible avec ce code-barres."
                 )
                 return
@@ -382,7 +383,7 @@
                 pendingLoans.length > 0 &&
                 newMemberId !== memberId
             ) {
-                const confirmed = confirm(
+                const confirmed = window.confirm(
                     "Changer de membre va vider les emprunts actuellement sélectionnés. Continuer ?"
                 )
 
@@ -397,21 +398,21 @@
 
         const handleConfirmLoans = async () => {
             if (!memberId) {
-                alert(
+                toast.error(
                     "Veuillez sélectionner un membre."
                 )
                 return
             }
 
             if (!dueDate) {
-                alert(
+                toast.error(
                     "Veuillez définir une date de retour."
                 )
                 return
             }
 
             if (pendingLoans.length === 0) {
-                alert(
+                toast.error(
                     "Aucun exemplaire n'a été ajouté."
                 )
                 return
@@ -453,7 +454,7 @@
                         0
                     )
 
-                    alert(
+                    toast.error(
                         `Ce membre peut encore emprunter ${remaining} document(s).`
                     )
 
@@ -518,7 +519,7 @@
 
                 await loadData()
 
-                alert(
+                toast.success(
                     `${loanRows.length} emprunt${
                         loanRows.length > 1
                             ? "s"
@@ -530,9 +531,7 @@
                     } avec succès.`
                 )
             } catch (error) {
-                console.error(error)
-
-                alert(
+                toast.error(
                     error instanceof Error
                         ? error.message
                         : "Une erreur est survenue lors de la confirmation."
@@ -617,13 +616,11 @@
 
                 await loadData()
 
-                alert(
+                toast.success(
                     "Retour enregistré avec succès."
                 )
             } catch (error) {
-                console.error(error)
-
-                alert(
+                toast.error(
                     error instanceof Error
                         ? error.message
                         : "Erreur lors de l'enregistrement du retour."
@@ -637,7 +634,7 @@
         const handleExtend = async (
             loan: ActiveLoan
         ) => {
-            const confirmed = confirm(
+            const confirmed = window.confirm(
                 `Prolonger ce prêt de ${EXTENSION_DAYS} jours ?`
             )
 
@@ -667,7 +664,7 @@
                     )
 
             if (error) {
-                alert(
+                toast.error(
                     "Erreur lors de la prolongation : " +
                         error.message
                 )
