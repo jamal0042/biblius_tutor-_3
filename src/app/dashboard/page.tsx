@@ -1,4 +1,4 @@
-import { BookOpen, Calendar, AlertCircle, CheckCircle2, Clock, ArrowRight, Sparkles, Library } from "lucide-react"
+import { BookOpen, Calendar, AlertCircle, CheckCircle2, Clock, ArrowRight, Sparkles, Library, BarChart3, TrendingUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -33,7 +33,15 @@ interface PenaltyData {
   amount: number
 }
 
+interface FlowPoint {
+  label: string
+  loans: number
+  returns: number
+}
+
 type LoanDocs = LoanDoc[] | null | undefined
+
+const MONTH_LABELS = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sept", "Oct", "Nov", "Déc"]
 
 function getAuthorName(doc: LoanDocs | ReservationData["documents"]): string {
   if (!doc) return "Auteur inconnu"
@@ -49,6 +57,140 @@ function getDocTitle(doc: LoanDocs | ReservationData["documents"]): string {
   return d?.title || "Titre inconnu"
 }
 
+/* =========================================================
+GRAPHIQUE 1 : HISTOGRAMME (barres)
+========================================================= */
+function HistogramChart({ data }: { data: FlowPoint[] }) {
+  const max = Math.max(...data.map((d) => d.loans), 1)
+
+  return (
+    <div>
+      <div className="flex h-44 items-end gap-2 sm:gap-3">
+        {data.map((d) => {
+          const pct = Math.max((d.loans / max) * 100, 2)
+          return (
+            <div key={d.label} className="group relative h-full flex-1">
+              {/* Barre */}
+              <div
+                className="absolute bottom-0 w-full rounded-t-lg bg-gradient-to-t from-amber-500 to-amber-400 transition-all duration-300 group-hover:from-amber-400 group-hover:to-amber-300 dark:from-amber-600 dark:to-amber-500"
+                style={{ height: `${pct}%` }}
+                title={`${d.label} : ${d.loans} emprunt(s)`}
+              />
+              {/* Valeur au-dessus de la barre */}
+              <span
+                className="absolute w-full text-center text-xs font-semibold text-slate-600 dark:text-slate-300"
+                style={{ bottom: `calc(${pct}% + 4px)` }}
+              >
+                {d.loans}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+      {/* Labels des mois */}
+      <div className="mt-2 flex gap-2 sm:gap-3">
+        {data.map((d) => (
+          <span key={d.label} className="flex-1 text-center text-xs text-slate-500 dark:text-slate-400">
+            {d.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* =========================================================
+GRAPHIQUE 2 : COURBE DE FLUX (lignes)
+========================================================= */
+function LineFlowChart({ data }: { data: FlowPoint[] }) {
+  const max = Math.max(...data.flatMap((d) => [d.loans, d.returns]), 1)
+
+  const x = (i: number) => 3 + (i / Math.max(data.length - 1, 1)) * 94
+  const y = (v: number) => 94 - (v / max) * 88
+
+  const loansPts = data.map((d, i) => `${x(i).toFixed(2)},${y(d.loans).toFixed(2)}`).join(" ")
+  const returnsPts = data.map((d, i) => `${x(i).toFixed(2)},${y(d.returns).toFixed(2)}`).join(" ")
+
+  return (
+    <div>
+      <div className="relative h-44">
+        {/* Lignes de grille */}
+        <div className="absolute inset-0 flex flex-col justify-between">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="h-px bg-slate-200 dark:bg-slate-800" />
+          ))}
+        </div>
+
+        {/* Courbes SVG */}
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
+          <polyline
+            points={loansPts}
+            fill="none"
+            stroke="#f59e0b"
+            strokeWidth="2"
+            vectorEffect="non-scaling-stroke"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+          <polyline
+            points={returnsPts}
+            fill="none"
+            stroke="#10b981"
+            strokeWidth="2"
+            vectorEffect="non-scaling-stroke"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+        </svg>
+
+        {/* Points emprunts */}
+        {data.map((d, i) => (
+          <div
+            key={`loan-${i}`}
+            className="absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-amber-500 dark:border-slate-900"
+            style={{ left: `${x(i)}%`, top: `${y(d.loans)}%` }}
+            title={`${d.label} : ${d.loans} emprunt(s)`}
+          />
+        ))}
+
+        {/* Points retours */}
+        {data.map((d, i) => (
+          <div
+            key={`ret-${i}`}
+            className="absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-emerald-500 dark:border-slate-900"
+            style={{ left: `${x(i)}%`, top: `${y(d.returns)}%` }}
+            title={`${d.label} : ${d.returns} retour(s)`}
+          />
+        ))}
+      </div>
+
+      {/* Labels des mois */}
+      <div className="mt-2 flex justify-between">
+        {data.map((d) => (
+          <span key={d.label} className="text-xs text-slate-500 dark:text-slate-400">
+            {d.label}
+          </span>
+        ))}
+      </div>
+
+      {/* Légende */}
+      <div className="mt-4 flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
+          Emprunts
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+          Retours
+        </span>
+      </div>
+    </div>
+  )
+}
+
+/* =========================================================
+PAGE
+========================================================= */
 export default async function DashboardPage() {
   const member = await getCurrentMember()
   if (!member) redirect("/login")
@@ -75,6 +217,17 @@ export default async function DashboardPage() {
     .eq("member_id", member.id)
     .eq("status", "unpaid")
 
+  // 🌟 NOUVEAU : historique complet pour les graphiques de flux
+  const { data: allLoans } = await supabase
+    .from("prets")
+    .select("loan_date")
+    .eq("member_id", member.id)
+
+  const { data: allReturns } = await supabase
+    .from("retours")
+    .select("return_date")
+    .eq("member_id", member.id)
+
   const today = new Date()
   const typedLoans = (loans as LoanData[]) || []
   const typedReservations = (reservations as ReservationData[]) || []
@@ -84,6 +237,28 @@ export default async function DashboardPage() {
   const overdueLoans = typedLoans.filter((l) => l.status === "overdue" || new Date(l.due_date) < today)
 
   const totalUnpaidFines = typedPenalties.reduce((acc: number, curr: PenaltyData) => acc + (curr.amount || 0), 0)
+
+  /* ---------- Construction des flux sur 6 mois ---------- */
+  const flow: FlowPoint[] = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(today.getFullYear(), today.getMonth() - (5 - i), 1)
+    return { label: MONTH_LABELS[d.getMonth()], loans: 0, returns: 0 }
+  })
+
+  for (const l of (allLoans as { loan_date: string }[]) || []) {
+    const d = new Date(l.loan_date)
+    const entry = flow.find((f) => f.label === MONTH_LABELS[d.getMonth()] &&
+      new Date(today.getFullYear(), today.getMonth() - (5 - flow.indexOf(f)), 1).getMonth() === d.getMonth() &&
+      new Date(today.getFullYear(), today.getMonth() - (5 - flow.indexOf(f)), 1).getFullYear() === d.getFullYear())
+    if (entry) entry.loans++
+  }
+
+  for (const r of (allReturns as { return_date: string }[]) || []) {
+    const d = new Date(r.return_date)
+    const entry = flow.find((f) => f.label === MONTH_LABELS[d.getMonth()] &&
+      new Date(today.getFullYear(), today.getMonth() - (5 - flow.indexOf(f)), 1).getMonth() === d.getMonth() &&
+      new Date(today.getFullYear(), today.getMonth() - (5 - flow.indexOf(f)), 1).getFullYear() === d.getFullYear())
+    if (entry) entry.returns++
+  }
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("fr-FR", {
@@ -106,9 +281,7 @@ export default async function DashboardPage() {
             <div>
               <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1.5 text-xs font-medium text-amber-600 dark:text-amber-300">
                 <Sparkles className="h-3.5 w-3.5" />
-                {firstName
-                  ? `Bonjour, ${firstName}`
-                  : "Votre espace membre"}
+                {firstName ? `Bonjour, ${firstName}` : "Votre espace membre"}
               </div>
               <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl dark:text-white">
                 Voici un aperçu de votre activité
@@ -142,6 +315,44 @@ export default async function DashboardPage() {
             <StatCard title="Réservations" value={typedReservations.length} description={typedReservations.length ? "En attente ou disponibles" : "Aucune réservation"} icon={Calendar} tone="gold" />
             <StatCard title="Amendes impayées" value={`${totalUnpaidFines.toLocaleString()} FC`} description={totalUnpaidFines ? "À régulariser" : "Tout est à jour"} icon={CheckCircle2} tone="green" />
           </div>
+        </section>
+
+        {/* 🌟 NOUVEAU : GRAPHIQUES DE FLUX */}
+        <section className="grid gap-6 lg:grid-cols-2">
+          {/* Histogramme */}
+          <Card className="border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+            <CardContent className="p-5 sm:p-6">
+              <div className="mb-6 flex items-center justify-between">
+                <div>
+                  <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-white">
+                    <BarChart3 className="h-5 w-5 text-amber-500" />
+                    Emprunts par mois
+                  </h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">6 derniers mois</p>
+                </div>
+                <Badge variant="outline" className="border-amber-300 text-amber-600 dark:border-amber-700 dark:text-amber-400">
+                  {flow.reduce((s, f) => s + f.loans, 0)} au total
+                </Badge>
+              </div>
+              <HistogramChart data={flow} />
+            </CardContent>
+          </Card>
+
+          {/* Courbe de flux */}
+          <Card className="border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+            <CardContent className="p-5 sm:p-6">
+              <div className="mb-6 flex items-center justify-between">
+                <div>
+                  <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-white">
+                    <TrendingUp className="h-5 w-5 text-emerald-500" />
+                    Flux emprunts / retours
+                  </h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Évolution sur 6 mois</p>
+                </div>
+              </div>
+              <LineFlowChart data={flow} />
+            </CardContent>
+          </Card>
         </section>
 
         <div className="grid gap-6 lg:grid-cols-3">
@@ -280,7 +491,7 @@ export default async function DashboardPage() {
                     Besoin d&apos;aide ? Posez-moi vos questions sur vos emprunts, pénalités ou le catalogue !
                   </p>
                   <p className="mt-3 text-xs text-white/70">
-                    Cliquez sur l&apos;icône 💬 en bas à droite
+                    Cliquez sur l&apos;icône de chat en bas à droite
                   </p>
                 </div>
               </CardContent>
