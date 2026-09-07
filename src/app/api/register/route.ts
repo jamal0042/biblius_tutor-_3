@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { getRoleLimits } from "@/lib/role-limits"
 
+// Client admin (service role) : bypass RLS, jamais exposé au navigateur
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -9,11 +11,19 @@ const supabaseAdmin = createClient(
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { email, password, firstName, lastName, phone, role, department } = body
 
-    if (!email || !password || !firstName || !lastName || !role) {
+    /* ---------- Validation & nettoyage ---------- */
+    const email = String(body.email || "").trim().toLowerCase()
+    const password = String(body.password || "")
+    const firstName = String(body.firstName || "").trim()
+    const lastName = String(body.lastName || "").trim()
+    const phone = String(body.phone || "").trim() || null
+    const role = String(body.role || "student")
+    const department = String(body.department || "").trim() || null
+
+    if (!email || !password || !firstName || !lastName) {
       return NextResponse.json(
-        { error: "Tous les champs obligatoires doivent être remplis." },
+        { error: "Email, mot de passe, prénom et nom sont obligatoires." },
         { status: 400 }
       )
     }
@@ -25,18 +35,42 @@ export async function POST(request: Request) {
       )
     }
 
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: {
-        first_name: firstName,
-        last_name: lastName,
-      },
-    })
+    // Uniquement les rôles autorisés à l'inscription publique
+    if (!["student", "teacher", "external"].includes(role)) {
+      return NextResponse.json(
+        { error: "Type de membre invalide." },
+        { status: 400 }
+      )
+    }
+
+    /* ---------- Email déjà utilisé ? ---------- */
+    const { data: existing } = await supabaseAdmin
+      .from("members")
+      .select("id")
+      .eq("email", email)
+      .maybeSingle()
+
+    if (existing) {
+      return NextResponse.json(
+        { error: "Un compte existe déjà avec cet email." },
+        { status: 409 }
+      )
+    }
+
+    /* ---------- Création de l'utilisateur auth ---------- */
+    const { data: authData, error: authError } =
+      await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: false, // activation après validation admin + confirmation email
+        user_metadata: {
+          first_name: firstName,
+          last_name: lastName,
+        },
+      })
 
     if (authError) {
-      const msg = authError.message.includes("already")
+      const msg = authError.message.toLowerCase().includes("already")
         ? "Un compte avec cet email existe déjà."
         : authError.message
       return NextResponse.json({ error: msg }, { status: 400 })
@@ -49,22 +83,19 @@ export async function POST(request: Request) {
       )
     }
 
-    const roleLimits: Record<string, { max_loans: number; max_loans_duration: number; max_digital_loans: number }> = {
-      teacher: { max_loans: 10, max_loans_duration: 30, max_digital_loans: 5 },
-      student: { max_loans: 5, max_loans_duration: 15, max_digital_loans: 3 },
-      external: { max_loans: 3, max_loans_duration: 7, max_digital_loans: 1 },
-    }
-    const limits = roleLimits[role] || roleLimits.student
+    /* ---------- Création du membre (statut PENDING) ---------- */
+    const limits = getRoleLimits(role)
 
     const { error: memberError } = await supabaseAdmin.from("members").insert({
       id: authData.user.id,
       email,
       first_name: firstName,
       last_name: lastName,
-      phone: phone || null,
+      phone,
       role,
-      department: department || null,
-      status: "pending",
+      department,
+      status: "pending",        // ✅ autorisé par members_status_check
+      invite_status: null,      // ✅ autorisé (NULL)
       max_loans: limits.max_loans,
       max_loans_duration: limits.max_loans_duration,
       max_digital_loans: limits.max_digital_loans,
@@ -73,17 +104,17 @@ export async function POST(request: Request) {
     })
 
     if (memberError) {
-      await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
+      // Rollback : on supprime l'utilisateur auth créé
+      await supabaseAdmin.auth.admin.deleteUser(authData.user.id).catch(() => {})
       return NextResponse.json(
-        { error: `Erreur base de données: ${memberError.message}` },
+        { error: `Erreur base de données : ${memberError.message}` },
         { status: 500 }
       )
     }
-
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true }, { status: 201 })
   } catch {
     return NextResponse.json(
-      { error: "Une erreur inattendue est survenue." },
+      { error: "Erreur serveur lors de l'inscription." },
       { status: 500 }
     )
   }

@@ -1,7 +1,8 @@
-    import { createServerSupabaseClient, getCurrentMember } from "@/lib/supabase/server"
+    import { createServerSupabaseClient } from "@/lib/supabase/server"
     import { notFound } from "next/navigation"
     import { ArrowLeft, Download, BookOpen, FileText, Film, Music, Image as ImageIcon } from "lucide-react"
     import Link from "next/link"
+    import Image from "next/image"
     import { Button } from "@/components/ui/button"
     import { Badge } from "@/components/ui/badge"
 
@@ -11,14 +12,13 @@
     params: Promise<{ id: string }>
     }) {
     const { id } = await params
-    const member = await getCurrentMember()
     const supabase = await createServerSupabaseClient()
 
-    // Récupérer la ressource
     const { data: resource } = await supabase
         .from("digital_resources")
         .select(`
-        *,
+        id, title, description, url, type, category, access_level,
+        uploaded_by, total_acces_numeriques, downloadable,
         documents (title, auteurs (id, name)),
         auteur_direct:auteurs!digital_resources_author_id_fkey (id, name)
         `)
@@ -37,21 +37,18 @@
         })
         .eq("id", id)
 
-    // Extraire le titre et l'auteur
     const doc = Array.isArray(resource.documents) ? resource.documents[0] : resource.documents
-    const auteurDirect = Array.isArray(resource.auteur_direct) 
-        ? resource.auteur_direct[0] 
+    const auteurDirect = Array.isArray(resource.auteur_direct)
+        ? resource.auteur_direct[0]
         : resource.auteur_direct
     const titre = doc?.title || resource.title
     const auteur = doc?.auteurs?.[0]?.name || auteurDirect?.name || "Auteur inconnu"
 
-    // Déterminer le type de fichier
     const fileExtension = resource.url?.split(".").pop()?.toLowerCase() || resource.type || "pdf"
-    
+
     let viewerContent = null
     let iconComponent = <FileText className="w-6 h-6" />
 
-    // PDF
     if (["pdf", "application/pdf"].includes(fileExtension)) {
         iconComponent = <BookOpen className="w-6 h-6" />
         viewerContent = (
@@ -61,9 +58,7 @@
             title={titre}
         />
         )
-    }
-    // Vidéo
-    else if (["mp4", "webm", "video/mp4"].includes(fileExtension)) {
+    } else if (["mp4", "webm", "video/mp4"].includes(fileExtension)) {
         iconComponent = <Film className="w-6 h-6" />
         viewerContent = (
         <video
@@ -75,9 +70,7 @@
             Votre navigateur ne supporte pas la lecture vidéo.
         </video>
         )
-    }
-    // Audio
-    else if (["mp3", "wav", "audio/mpeg"].includes(fileExtension)) {
+    } else if (["mp3", "wav", "audio/mpeg"].includes(fileExtension)) {
         iconComponent = <Music className="w-6 h-6" />
         viewerContent = (
         <div className="flex flex-col items-center justify-center h-full bg-gradient-to-br from-purple-900 to-slate-900 p-8">
@@ -96,22 +89,21 @@
             </audio>
         </div>
         )
-    }
-    // Image
-    else if (["jpg", "jpeg", "png", "gif", "webp", "image/jpeg", "image/png"].includes(fileExtension)) {
+    } else if (["jpg", "jpeg", "png", "gif", "webp", "image/jpeg", "image/png"].includes(fileExtension)) {
         iconComponent = <ImageIcon className="w-6 h-6" />
         viewerContent = (
         <div className="flex items-center justify-center h-full bg-slate-900 p-4">
-            <img
+            <Image
             src={resource.url}
             alt={titre}
+            width={1200}
+            height={800}
+            unoptimized
             className="max-w-full max-h-full object-contain"
             />
         </div>
         )
-    }
-    // Documents Office (Word, PowerPoint, Excel) via Google Docs Viewer
-    else if (["doc", "docx", "ppt", "pptx", "xls", "xlsx"].includes(fileExtension)) {
+    } else if (["doc", "docx", "ppt", "pptx", "xls", "xlsx"].includes(fileExtension)) {
         iconComponent = <FileText className="w-6 h-6" />
         const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(resource.url)}&embedded=true`
         viewerContent = (
@@ -121,9 +113,7 @@
             title={titre}
         />
         )
-    }
-    // Fallback : lien de téléchargement
-    else {
+    } else {
         viewerContent = (
         <div className="flex flex-col items-center justify-center h-full bg-slate-100 dark:bg-slate-900 p-8">
             <FileText className="w-16 h-16 text-slate-400 mb-4" />
@@ -133,14 +123,15 @@
             <p className="text-slate-500 dark:text-slate-400 mb-6">
             Ce format de fichier ne peut pas être prévisualisé dans le navigateur.
             </p>
+            {resource.downloadable && (
             <a
-            href={resource.url}
-            download
-            className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                href={`/api/download/${resource.id}`}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
             >
-            <Download className="w-5 h-5" />
-            Télécharger le fichier
+                <Download className="w-5 h-5" />
+                Télécharger le fichier
             </a>
+            )}
         </div>
         )
     }
@@ -154,7 +145,7 @@
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                 <Link href="/dashboard/numerique">
                     <Button variant="ghost" size="icon" className="shrink-0">
-                    <ArrowLeft className="w-5 h-5" />
+                    <ArrowLeft className="w-5 w-5" />
                     </Button>
                 </Link>
                 <div className="min-w-0 flex-1">
@@ -171,14 +162,20 @@
                     {iconComponent}
                     <span className="ml-2 uppercase">{fileExtension}</span>
                 </Badge>
-                <a
-                    href={resource.url}
-                    download
+                {!resource.downloadable && (
+                    <Badge className="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                    Lecture seule
+                    </Badge>
+                )}
+                {resource.downloadable && (
+                    <a
+                    href={`/api/download/${resource.id}`}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-                >
+                    >
                     <Download className="w-4 h-4" />
                     <span className="hidden sm:inline">Télécharger</span>
-                </a>
+                    </a>
+                )}
                 </div>
             </div>
             </div>
