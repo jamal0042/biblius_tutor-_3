@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { toSingle } from "@/lib/supabase/relations"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { StatCard } from "@/components/dashboard/stat-card"
 import {
   BookOpen,
   Clock,
@@ -29,12 +30,17 @@ interface ExemplaireInfo {
   documents?: MaybeArray<DocumentInfo>
 }
 
+interface RetourInfo {
+  return_date: string
+}
+
 interface Pret {
   id: string
   loan_date: string
   due_date: string
   status: string
   exemplaires: MaybeArray<ExemplaireInfo>
+  retours: MaybeArray<RetourInfo>
 }
 
 interface Penalite {
@@ -147,7 +153,9 @@ export default function RapportsPage() {
         const [pretsResult, penalitesResult] = await Promise.all([
           supabase
             .from("prets")
-            .select("id, loan_date, due_date, status, exemplaires(documents(title))")
+            .select(
+              "id, loan_date, due_date, status, exemplaires(documents(title)), retours(return_date)"
+            )
             .eq("member_id", member.id)
             .order("loan_date", { ascending: false })
             .limit(10),
@@ -184,9 +192,9 @@ export default function RapportsPage() {
 
   if (authLoading || !member) return null
 
+  const today = new Date()
   const totalPrets = prets.length
   const enCours = prets.filter((p) => p.status === "active").length
-  const today = new Date()
   const enRetard = prets.filter(
     (p) => p.status === "overdue" || (p.status === "active" && new Date(p.due_date) < today)
   ).length
@@ -218,61 +226,42 @@ export default function RapportsPage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-              <CardContent className="flex items-center gap-3 p-4">
-                <div className="p-2 rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
-                  <BookOpen className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Total emprunts</p>
-                  <p className="text-xl font-bold text-slate-900 dark:text-white">{totalPrets}</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-              <CardContent className="flex items-center gap-3 p-4">
-                <div className="p-2 rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
-                  <Clock className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Emprunts en cours</p>
-                  <p className="text-xl font-bold text-slate-900 dark:text-white">{enCours}</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-              <CardContent className="flex items-center gap-3 p-4">
-                <div className="p-2 rounded-lg bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400">
-                  <AlertCircle className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Retards</p>
-                  <p className="text-xl font-bold text-slate-900 dark:text-white">{enRetard}</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-              <CardContent className="flex items-center gap-3 p-4">
-                <div className="p-2 rounded-lg bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400">
-                  <DollarSign className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Pénalités impayées</p>
-                  <p className="text-xl font-bold text-slate-900 dark:text-white">
-                    {penalitesImpayees.toLocaleString()} FCFA
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+          {/* 🌟 CARTES COMPACTES SUR UNE SEULE LIGNE (comme le dashboard) */}
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <StatCard
+              title="Total emprunts"
+              value={totalPrets}
+              description="10 derniers affichés"
+              icon={BookOpen}
+              tone="blue"
+            />
+            <StatCard
+              title="Emprunts en cours"
+              value={enCours}
+              description={enCours ? "À retourner bientôt" : "Aucun en cours"}
+              icon={Clock}
+              tone="green"
+            />
+            <StatCard
+              title="Retards"
+              value={enRetard}
+              description={enRetard ? "Action requise" : "Aucun retard"}
+              icon={AlertCircle}
+              tone="red"
+              danger={enRetard > 0}
+            />
+            <StatCard
+              title="Pénalités impayées"
+              value={`${penalitesImpayees.toLocaleString()} FC`}
+              description={penalitesImpayees ? "À régulariser" : "Tout est à jour"}
+              icon={DollarSign}
+              tone="gold"
+            />
           </div>
 
           <section className="space-y-4">
             <h2 className="text-xl font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-              <History className="w-5 h-5 text-blue-500" />
+              <History className="w-5 w-5 text-blue-500" />
               Historique des emprunts
             </h2>
 
@@ -312,11 +301,13 @@ export default function RapportsPage() {
                       {prets.map((pret) => {
                         const exemplaire = toSingle(pret.exemplaires)
                         const doc = exemplaire ? toSingle(exemplaire.documents) : null
+                        const retour = toSingle(pret.retours)
                         const isOverdue =
                           pret.status === "overdue" ||
                           (pret.status === "active" && new Date(pret.due_date) < today)
 
-                        const effectiveStatus = isOverdue && pret.status === "active" ? "overdue" : pret.status
+                        const effectiveStatus =
+                          isOverdue && pret.status === "active" ? "overdue" : pret.status
 
                         return (
                           <tr
@@ -335,7 +326,9 @@ export default function RapportsPage() {
                               {formatDate(pret.due_date)}
                             </td>
                             <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">
-                              {pret.status === "returned" ? "—" : "—"}
+                              {pret.status === "returned" && retour
+                                ? formatDate(retour.return_date)
+                                : "—"}
                             </td>
                             <td className="px-6 py-4">{statusBadge(effectiveStatus)}</td>
                           </tr>
@@ -351,7 +344,7 @@ export default function RapportsPage() {
           {penalites.length > 0 && (
             <section className="space-y-4">
               <h2 className="text-xl font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-amber-500" />
+                <AlertCircle className="w-5 w-5 text-amber-500" />
                 Pénalités
               </h2>
 

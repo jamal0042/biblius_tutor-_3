@@ -9,6 +9,7 @@
     import { NavLink } from "@/components/nav-link"
     import { Button } from "@/components/ui/button"
     import { Menu, X, User, LogOut, LayoutDashboard, BookOpen } from "lucide-react"
+    import { NotificationBell } from "@/components/dashboard/notification-bell"
 
     export function Header() {
     const { member, loading, signOut } = useAuth()
@@ -120,7 +121,10 @@
                 </>
                 )}
 
+                <div className="flex items-center gap-1 sm:gap-2">
+                <NotificationBell />
                 <ThemeToggle />
+                </div>
             </nav>
 
             {/* ========== Bouton Menu Mobile ========== */}

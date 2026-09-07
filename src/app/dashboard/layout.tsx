@@ -1,6 +1,7 @@
     import { redirect } from "next/navigation"
     import { getCurrentMember } from "@/lib/supabase/server"
     import { DashboardShell } from "@/components/dashboard/dashboard-shell"
+    import { NotificationBell } from "@/components/dashboard/notification-bell"
 
     export default async function DashboardLayout({
     children,
