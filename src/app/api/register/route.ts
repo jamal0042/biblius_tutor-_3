@@ -1,12 +1,6 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { getSupabaseAdmin } from "@/lib/supabase/admin"
 import { getRoleLimits } from "@/lib/role-limits"
-
-// Client admin (service role) : bypass RLS, jamais exposé au navigateur
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
 
 export async function POST(request: Request) {
   try {
@@ -35,13 +29,14 @@ export async function POST(request: Request) {
       )
     }
 
-    // Uniquement les rôles autorisés à l'inscription publique
     if (!["student", "teacher", "external"].includes(role)) {
       return NextResponse.json(
         { error: "Type de membre invalide." },
         { status: 400 }
       )
     }
+
+    const supabaseAdmin = getSupabaseAdmin()
 
     /* ---------- Email déjà utilisé ? ---------- */
     const { data: existing } = await supabaseAdmin
@@ -62,7 +57,7 @@ export async function POST(request: Request) {
       await supabaseAdmin.auth.admin.createUser({
         email,
         password,
-        email_confirm: false, // activation après validation admin + confirmation email
+        email_confirm: false,
         user_metadata: {
           first_name: firstName,
           last_name: lastName,
@@ -94,8 +89,8 @@ export async function POST(request: Request) {
       phone,
       role,
       department,
-      status: "pending",        // ✅ autorisé par members_status_check
-      invite_status: null,      // ✅ autorisé (NULL)
+      status: "pending",
+      invite_status: null,
       max_loans: limits.max_loans,
       max_loans_duration: limits.max_loans_duration,
       max_digital_loans: limits.max_digital_loans,
@@ -104,18 +99,16 @@ export async function POST(request: Request) {
     })
 
     if (memberError) {
-      // Rollback : on supprime l'utilisateur auth créé
       await supabaseAdmin.auth.admin.deleteUser(authData.user.id).catch(() => {})
       return NextResponse.json(
         { error: `Erreur base de données : ${memberError.message}` },
         { status: 500 }
       )
     }
+
     return NextResponse.json({ success: true }, { status: 201 })
-  } catch {
-    return NextResponse.json(
-      { error: "Erreur serveur lors de l'inscription." },
-      { status: 500 }
-    )
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Erreur serveur lors de l'inscription."
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }

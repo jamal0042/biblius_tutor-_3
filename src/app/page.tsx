@@ -1,211 +1,216 @@
-import { ArrowRight, BookOpen, Search, Users, Clock, Shield, FileText } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Header } from "@/components/header"
-import { Footer } from "@/components/footer"
-import { HeroCarousel } from "@/components/hero-carousel"
-import { ResourceCardClient, type DigitalResource } from "@/components/resource-card"
-import { createServerSupabaseClient, getCurrentMember } from "@/lib/supabase/server"
 import Link from "next/link"
-
-const features = [
-  {
-    icon: BookOpen,
-    title: "Catalogue Intelligent",
-    description: "Recherchez parmi des milliers d'ouvrages physiques et numériques avec des filtres avancés.",
-    color: "bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-500"
-  },
-  {
-    icon: Search,
-    title: "Ressources Numériques",
-    description: "Accédez aux thèses, mémoires et projets tutorés directement en ligne.",
-    color: "bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-500"
-  },
-  {
-    icon: Clock,
-    title: "Gestion des Emprunts",
-    description: "Suivez vos prêts, dates de retour et historique en temps réel.",
-    color: "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-500"
-  },
-  {
-    icon: Shield,
-    title: "Sécurité des Données",
-    description: "Vos informations et vos emprunts sont protégés avec les meilleures pratiques.",
-    color: "bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-500"
-  },
-  {
-    icon: FileText,
-    title: "Rapports Statistiques",
-    description: "Tableaux de bord détaillés pour les administrateurs et bibliothécaires.",
-    color: "bg-rose-100 dark:bg-rose-500/20 text-rose-600 dark:text-rose-500"
-  },
-  {
-    icon: Users,
-    title: "Multi-Profils",
-    description: "Espaces dédiés pour étudiants, enseignants et administrateurs.",
-    color: "bg-cyan-100 dark:bg-cyan-500/20 text-cyan-600 dark:text-cyan-500"
-  }
-]
-
-const stats = [
-  { value: "5000+", label: "Documents disponibles" },
-  { value: "1200+", label: "Membres actifs" },
-  { value: "350+", label: "Ressources numériques" },
-  { value: "24/7", label: "Accès en ligne" }
-]
+import { Button } from "@/components/ui/button"
+import {
+  BookOpen,
+  Sparkles,
+  ArrowRight,
+  Library,
+  FileText,
+  Clock,
+  Shield,
+} from "lucide-react"
+import { getCurrentMember, createServerSupabaseClient } from "@/lib/supabase/server"
+import { Logo } from "@/components/logo"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { ResourceCardClient, type DigitalResource } from "@/components/resource-card"
 
 export default async function HomePage() {
   const supabase = await createServerSupabaseClient()
   const member = await getCurrentMember()
+
+  // Dernières ressources publiques pour la page d'accueil
   const { data: resources } = await supabase
     .from("digital_resources")
-    .select(`
-      *,
+    .select(
+      `*,
       documents (title, auteurs (id, name)),
-      auteur_direct:auteurs!digital_resources_author_id_fkey (id, name)
-    `)
+      auteur_direct:auteurs!digital_resources_author_id_fkey (id, name)`
+    )
     .eq("access_level", "all")
     .order("created_at", { ascending: false })
-    .limit(6)
+    .limit(3)
 
-  const publicResources = (resources as unknown as DigitalResource[]) || []
+  const featuredResources = (resources as unknown as DigitalResource[]) || []
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300 flex flex-col">
-      <Header />
+    <div className="min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300">
+      {/* Navbar */}
+      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          <Logo />
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            {member ? (
+              <Link href="/dashboard">
+                <Button className="bg-amber-500 hover:bg-amber-600 text-white">
+                  Mon espace
+                  <ArrowRight className="ml-1.5 h-4 w-4" />
+                </Button>
+              </Link>
+            ) : (
+              <>
+                <Link href="/login">
+                  <Button variant="ghost">Connexion</Button>
+                </Link>
+                <Link href="/register">
+                  <Button className="bg-amber-500 hover:bg-amber-600 text-white">
+                    S&apos;inscrire
+                  </Button>
+                </Link>
+              </>
+            )}
+          </div>
+        </div>
+      </header>
 
-      <main className="flex-1">
-        {/* Carrousel en haut de page */}
-        <HeroCarousel />
+      {/* Hero */}
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-amber-50/40 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900" />
+        <div className="absolute -top-24 -right-24 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl" />
+        <div className="absolute -bottom-24 -left-24 h-96 w-96 rounded-full bg-amber-500/10 blur-3xl" />
 
-        {/* Section Héros */}
-        <div className="max-w-7xl mx-auto px-6 py-16 md:py-24">
-          <div className="text-center space-y-8 mb-16">
-            <h1 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white">
-              Bienvenue sur{" "}
-              <span className="text-amber-600 dark:text-amber-500">
-                Biblius
+        <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
+          <div className="mx-auto max-w-3xl text-center">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-4 py-1.5 text-sm font-medium text-amber-600 dark:text-amber-300">
+              <Sparkles className="h-4 w-4" />
+              Bibliothèque numérique nouvelle génération
+            </div>
+            <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-6xl dark:text-white">
+              Toute la connaissance,{" "}
+              <span className="bg-gradient-to-r from-blue-600 to-amber-500 bg-clip-text text-transparent">
+                à portée de clic
               </span>
             </h1>
-            <p className="text-xl text-slate-600 dark:text-slate-400 max-w-3xl mx-auto">
-              La solution complète pour moderniser la gestion de votre bibliothèque.
+            <p className="mt-6 text-lg leading-8 text-slate-600 dark:text-slate-400">
+              Biblius est votre bibliothèque universitaire en ligne : catalogue riche, ressources
+              numériques en lecture intégrée, réservations simples et assistant IA pour vous guider.
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
               <Link href="/catalogue">
-                <Button size="lg" className="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-white px-8 h-12 text-lg">
+                <Button className="h-12 px-6 bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/25">
+                  <BookOpen className="mr-2 h-4 w-4" />
                   Explorer le catalogue
-                  <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
               </Link>
-              <Link href="/blog">
-                <Button size="lg" variant="outline" className="w-full sm:w-auto border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 px-8 h-12 text-lg">
-                  Lire le blog
-                </Button>
-              </Link>
+              {member ? (
+                <Link href="/dashboard">
+                  <Button variant="outline" className="h-12 px-6">
+                    Mon tableau de bord
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              ) : (
+                <Link href="/register">
+                  <Button variant="outline" className="h-12 px-6">
+                    Créer un compte
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
+        </div>
+      </section>
 
-          {/* Section Statistiques */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-24">
-            {stats.map((stat, index) => (
+      {/* Fonctionnalités */}
+      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {[
+            {
+              icon: BookOpen,
+              title: "Catalogue riche",
+              desc: "Livres, mémoires, thèses, TFC et rapports classés selon la norme Dewey.",
+              tone: "blue",
+            },
+            {
+              icon: FileText,
+              title: "Ressources numériques",
+              desc: "Lisez vos documents directement dans la plateforme, sans rien installer.",
+              tone: "amber",
+            },
+            {
+              icon: Clock,
+              title: "Gestion simplifiée",
+              desc: "Emprunts, réservations et rappels automatiques depuis votre espace.",
+              tone: "emerald",
+            },
+            {
+              icon: Shield,
+              title: "Assistant IA",
+              desc: "Un chatbot intelligent pour vous aider à trouver les bons documents.",
+              tone: "purple",
+            },
+          ].map((f) => {
+            const Icon = f.icon
+            return (
               <div
-                key={index}
-                className="text-center p-6 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800"
+                key={f.title}
+                className="rounded-xl border border-slate-200 bg-white p-6 transition-all hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
               >
-                <div className="text-3xl md:text-4xl font-bold text-amber-600 dark:text-amber-500 mb-2">
-                  {stat.value}
+                <div className={`mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-${f.tone}-500/10 text-${f.tone}-500`}>
+                  <Icon className="h-5 w-5" />
                 </div>
-                <div className="text-sm text-slate-600 dark:text-slate-400">
-                  {stat.label}
-                </div>
+                <h3 className="text-base font-semibold text-slate-900 dark:text-white">
+                  {f.title}
+                </h3>
+                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{f.desc}</p>
               </div>
-            ))}
-          </div>
+            )
+          })}
+        </div>
+      </section>
 
-          {/* Section Ressources Numériques publiques */}
-          <section className="mb-24" aria-labelledby="public-resources-title">
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-10">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">Accès libre</p>
-                <h2 id="public-resources-title" className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mt-2">
-                  Ressources numériques
-                </h2>
-                <p className="text-lg text-slate-600 dark:text-slate-400 mt-3 max-w-2xl">
-                  Découvrez les ressources disponibles avant de vous connecter.
-                </p>
-              </div>
-              <Link href="/login" className="text-sm font-medium text-amber-600 dark:text-amber-500 hover:underline">
-                Se connecter pour accéder à tout le contenu
-              </Link>
-            </div>
-
-            {publicResources.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {publicResources.map((resource) => (
-                  <ResourceCardClient key={resource.id} resource={resource} />
-                ))}
-              </div>
-            ) : (
-              <p className="text-slate-500 dark:text-slate-400">Aucune ressource numérique publique pour le moment.</p>
-            )}
-          </section>
-
-          {/* Section Fonctionnalités */}
-          <div className="mb-16">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-4">
-                Fonctionnalités Principales
+      {/* Dernières ressources */}
+      {featuredResources.length > 0 && (
+        <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <div className="mb-8 flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+                Dernières ressources ajoutées
               </h2>
-              <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-                Tout ce dont vous avez besoin pour gérer efficacement votre bibliothèque
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                Consultez les documents récents disponibles en lecture libre.
               </p>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {features.map((feature, index) => (
-                <div
-                  key={index}
-                  className="group p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-amber-500/50 hover:shadow-lg transition-all duration-300"
-                >
-                  <div className={`w-12 h-12 rounded-lg flex items-center justify-center mb-4 ${feature.color}`}>
-                    <feature.icon className="w-6 h-6" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2 group-hover:text-amber-600 dark:group-hover:text-amber-500 transition-colors">
-                    {feature.title}
-                  </h3>
-                  <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
-                    {feature.description}
-                  </p>
-                </div>
-              ))}
-            </div>
+            <Link href="/dashboard/numerique">
+              <Button variant="outline" className="hidden sm:inline-flex">
+                Voir tout
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
           </div>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {featuredResources.map((r) => (
+              <ResourceCardClient key={r.id} resource={r} />
+            ))}
+          </div>
+        </section>
+      )}
 
-          {/* Section Call-to-Action */}
-          <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-8 md:p-12 text-center text-white">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Prêt à moderniser votre bibliothèque ?
-            </h2>
-            <p className="text-lg text-amber-50 mb-8 max-w-2xl mx-auto">
-              Rejoignez les établissements qui font confiance à Biblius pour leur gestion documentaire.
+      {/* Footer */}
+      <footer className="border-t border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/50">
+        <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+          <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
+            <div className="flex items-center gap-2">
+              <Library className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                Biblius
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              © {new Date().getFullYear()} Biblius. Projet tutoré — Tous droits réservés.
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/register">
-                <Button size="lg" className="w-full sm:w-auto bg-white text-amber-600 hover:bg-slate-100 px-8 h-12 text-lg">
-                  Créer un compte
-                  <ArrowRight className="ml-2 w-5 h-5" />
-                </Button>
+            <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
+              <Link href="/login" className="hover:text-slate-700 dark:hover:text-slate-300">
+                Connexion
               </Link>
-              <Link href="/contact">
-                <Button size="lg" variant="outline" className="w-full sm:w-auto border-white text-white hover:bg-white/10 px-8 h-12 text-lg">
-                  Nous contacter
-                </Button>
+              <Link href="/register" className="hover:text-slate-700 dark:hover:text-slate-300">
+                Inscription
               </Link>
             </div>
           </div>
         </div>
-      </main>
-
-      <Footer />
+      </footer>
     </div>
   )
 }
